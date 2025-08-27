@@ -1,6 +1,7 @@
 {
   "name": "cameleon-virtual-tryon",
   "version": "1.0.0",
+  "type": "module",
   "description": "Virtual Try-On application - Il tuo Camerino Virtuale",
   "scripts": {
     "dev": "vercel dev",

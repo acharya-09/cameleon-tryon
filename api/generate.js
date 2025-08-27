@@ -4,11 +4,6 @@
  * Never exposed to client/browser
  */
 
-const axios = require('axios');
-const FormData = require('form-data');
-const multer = require('multer');
-const crypto = require('crypto');
-
 // CRITICAL: Store these in environment variables, NEVER in code
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
 const RUNPOD_API_URL = process.env.RUNPOD_API_URL;
@@ -25,54 +20,6 @@ const requestCounts = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5;
 
-// Configure multer for memory storage (Vercel doesn't support disk storage)
-const upload = multer({ 
-    storage: multer.memoryStorage(),
-    limits: {
-        fileSize: 10 * 1024 * 1024 // 10MB limit
-    },
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed'), false);
-        }
-    }
-});
-
-// Rate limiting middleware
-function rateLimitMiddleware(req, res, next) {
-    const clientId = req.ip || req.connection.remoteAddress || 'unknown';
-    const now = Date.now();
-    
-    // Clean up old entries
-    for (const [key, data] of requestCounts.entries()) {
-        if (now - data.firstRequest > RATE_LIMIT_WINDOW) {
-            requestCounts.delete(key);
-        }
-    }
-    
-    // Check rate limit
-    if (requestCounts.has(clientId)) {
-        const clientData = requestCounts.get(clientId);
-        if (now - clientData.firstRequest <= RATE_LIMIT_WINDOW) {
-            if (clientData.count >= MAX_REQUESTS_PER_WINDOW) {
-                return res.status(429).json({ 
-                    error: 'Too many requests',
-                    message: 'Please wait before trying again'
-                });
-            }
-            clientData.count++;
-        } else {
-            requestCounts.set(clientId, { firstRequest: now, count: 1 });
-        }
-    } else {
-        requestCounts.set(clientId, { firstRequest: now, count: 1 });
-    }
-    
-    next();
-}
-
 /**
  * Upload image to free hosting service
  * ImgBB is more reliable than Imgur for server uploads
@@ -86,21 +33,25 @@ async function uploadImageToHost(imageBuffer) {
         
         if (imgbbApiKey) {
             try {
-                const formData = new FormData();
+                const formData = new URLSearchParams();
                 formData.append('image', base64Image);
                 
-                const imgbbResponse = await axios.post(
+                const imgbbResponse = await fetch(
                     `https://api.imgbb.com/1/upload?key=${imgbbApiKey}`,
-                    formData,
                     {
-                        headers: formData.getHeaders(),
-                        timeout: 30000
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        }
                     }
                 );
                 
-                if (imgbbResponse.data.success) {
+                const imgbbData = await imgbbResponse.json();
+                
+                if (imgbbData.success) {
                     console.log('Image uploaded to ImgBB successfully');
-                    return imgbbResponse.data.data.url;
+                    return imgbbData.data.url;
                 }
             } catch (imgbbError) {
                 console.log('ImgBB upload failed, trying Imgur as fallback...');
@@ -111,23 +62,26 @@ async function uploadImageToHost(imageBuffer) {
         
         // Option 2: Fallback to Imgur (less reliable from servers)
         try {
-            const imgurResponse = await axios.post(
+            const imgurResponse = await fetch(
                 'https://api.imgur.com/3/image',
                 {
-                    image: base64Image,
-                    type: 'base64'
-                },
-                {
+                    method: 'POST',
                     headers: {
-                        'Authorization': 'Client-ID 8e5b0e2b5f8c9a3'
+                        'Authorization': 'Client-ID 8e5b0e2b5f8c9a3',
+                        'Content-Type': 'application/json'
                     },
-                    timeout: 30000
+                    body: JSON.stringify({
+                        image: base64Image,
+                        type: 'base64'
+                    })
                 }
             );
             
-            if (imgurResponse.data.success) {
+            const imgurData = await imgurResponse.json();
+            
+            if (imgurData.success) {
                 console.log('Image uploaded to Imgur as fallback');
-                return imgurResponse.data.data.link;
+                return imgurData.data.link;
             }
         } catch (imgurError) {
             console.log('Imgur also failed');
@@ -146,6 +100,47 @@ async function uploadImageToHost(imageBuffer) {
  */
 function generateRequestId() {
     return `karthik-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Parse multipart form data manually for Vercel
+ */
+async function parseMultipartFormData(request) {
+    const boundary = request.headers['content-type']?.split('boundary=')[1];
+    if (!boundary) {
+        throw new Error('No boundary found in content-type');
+    }
+
+    const body = Buffer.from(await request.arrayBuffer());
+    const boundaryBuffer = Buffer.from(`--${boundary}`);
+    const parts = [];
+    
+    let start = 0;
+    while (true) {
+        const boundaryIndex = body.indexOf(boundaryBuffer, start);
+        if (boundaryIndex === -1) break;
+        
+        if (start > 0) {
+            const partData = body.slice(start, boundaryIndex);
+            const headerEndIndex = partData.indexOf('\r\n\r\n');
+            if (headerEndIndex !== -1) {
+                const headers = partData.slice(0, headerEndIndex).toString();
+                const content = partData.slice(headerEndIndex + 4, -2); // Remove trailing \r\n
+                
+                const nameMatch = headers.match(/name="([^"]+)"/);
+                if (nameMatch) {
+                    parts.push({
+                        name: nameMatch[1],
+                        data: content
+                    });
+                }
+            }
+        }
+        
+        start = boundaryIndex + boundaryBuffer.length + 2; // +2 for \r\n
+    }
+    
+    return parts;
 }
 
 // Main API handler
@@ -174,7 +169,7 @@ export default async function handler(req, res) {
     }
     
     // Generate request ID for tracking
-    const requestId = crypto.randomBytes(8).toString('hex');
+    const requestId = Math.random().toString(36).substr(2, 8);
     
     // Apply rate limiting
     const clientId = req.ip || req.headers['x-forwarded-for'] || 'unknown';
@@ -206,37 +201,26 @@ export default async function handler(req, res) {
     }
     
     try {
-        // Parse multipart form data
-        const uploadMiddleware = upload.fields([
-            { name: 'userImage', maxCount: 1 },
-            { name: 'clothingImage', maxCount: 1 }
-        ]);
+        console.log(`[${requestId}] Processing request...`);
         
-        // Promisify multer
-        await new Promise((resolve, reject) => {
-            uploadMiddleware(req, res, (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-        });
+        // Parse form data
+        const parts = await parseMultipartFormData(req);
         
-        // Validate uploads
-        if (!req.files || !req.files.userImage || !req.files.clothingImage) {
+        const userImagePart = parts.find(p => p.name === 'userImage');
+        const clothingImagePart = parts.find(p => p.name === 'clothingImage');
+        
+        if (!userImagePart || !clothingImagePart) {
             return res.status(400).json({ 
                 error: 'Both user image and clothing image are required' 
             });
         }
 
-        const userImageBuffer = req.files.userImage[0].buffer;
-        const clothingImageBuffer = req.files.clothingImage[0].buffer;
-
-        console.log(`[${requestId}] Processing request...`);
         console.log(`[${requestId}] Uploading images to hosting service...`);
         
         // Upload images to get public URLs
         const [userImageUrl, clothingImageUrl] = await Promise.all([
-            uploadImageToHost(userImageBuffer),
-            uploadImageToHost(clothingImageBuffer)
+            uploadImageToHost(userImagePart.data),
+            uploadImageToHost(clothingImagePart.data)
         ]);
 
         console.log(`[${requestId}] Images uploaded successfully`);
@@ -256,27 +240,25 @@ export default async function handler(req, res) {
             }
         };
 
-        const runpodResponse = await axios.post(
-            RUNPOD_API_URL,
-            runpodPayload,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${RUNPOD_API_KEY}`
-                },
-                timeout: 320000 // 5 minutes 20 seconds - RunPod can take up to 5+ minutes
-            }
-        );
+        const runpodResponse = await fetch(RUNPOD_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${RUNPOD_API_KEY}`
+            },
+            body: JSON.stringify(runpodPayload)
+        });
 
-        console.log(`[${requestId}] Initial response status:`, runpodResponse.data.status);
+        const runpodData = await runpodResponse.json();
+        console.log(`[${requestId}] Initial response status:`, runpodData.status);
 
         // Check if completed immediately (rare)
-        if (runpodResponse.data.status === 'COMPLETED' && 
-            runpodResponse.data.output && 
-            runpodResponse.data.output[0] && 
-            runpodResponse.data.output[0].image) {
+        if (runpodData.status === 'COMPLETED' && 
+            runpodData.output && 
+            runpodData.output[0] && 
+            runpodData.output[0].image) {
             
-            const generatedImageUrl = runpodResponse.data.output[0].image;
+            const generatedImageUrl = runpodData.output[0].image;
             console.log(`[${requestId}] ✅ Generation completed immediately!`);
             
             return res.json({
@@ -286,8 +268,8 @@ export default async function handler(req, res) {
         }
 
         // If we get IN_PROGRESS, we need to poll the status
-        if (runpodResponse.data.status === 'IN_PROGRESS') {
-            const jobId = runpodResponse.data.id;
+        if (runpodData.status === 'IN_PROGRESS') {
+            const jobId = runpodData.id;
             if (!jobId) {
                 throw new Error('No job ID received from RunPod');
             }
@@ -308,22 +290,22 @@ export default async function handler(req, res) {
                     const statusUrl = `${RUNPOD_BASE_URL}/status/${jobId}`;
                     console.log(`[${requestId}] Polling: ${statusUrl}`);
                     
-                    const statusResponse = await axios.get(statusUrl, {
+                    const statusResponse = await fetch(statusUrl, {
                         headers: {
                             'Authorization': `Bearer ${RUNPOD_API_KEY}`
-                        },
-                        timeout: 30000
+                        }
                     });
 
-                    const status = statusResponse.data.status;
+                    const statusData = await statusResponse.json();
+                    const status = statusData.status;
                     console.log(`[${requestId}] Poll result: ${status}`);
 
                     if (status === 'COMPLETED') {
-                        if (statusResponse.data.output && 
-                            statusResponse.data.output[0] && 
-                            statusResponse.data.output[0].image) {
+                        if (statusData.output && 
+                            statusData.output[0] && 
+                            statusData.output[0].image) {
                             
-                            const generatedImageUrl = statusResponse.data.output[0].image;
+                            const generatedImageUrl = statusData.output[0].image;
                             const totalTime = Math.round((Date.now() - startTime) / 1000);
                             
                             console.log(`[${requestId}] ✅ Generation completed after ${totalTime}s!`);
@@ -355,27 +337,27 @@ export default async function handler(req, res) {
                     console.log(`[${requestId}] Poll error:`, pollError.message);
                     
                     // Try alternative status endpoint format
-                    if (pollError.response && pollError.response.status === 404) {
+                    if (pollError.message.includes('404')) {
                         try {
                             const altStatusUrl = `${RUNPOD_BASE_URL}/${jobId}`;
                             console.log(`[${requestId}] Trying alternative URL: ${altStatusUrl}`);
                             
-                            const altStatusResponse = await axios.get(altStatusUrl, {
+                            const altStatusResponse = await fetch(altStatusUrl, {
                                 headers: {
                                     'Authorization': `Bearer ${RUNPOD_API_KEY}`
-                                },
-                                timeout: 30000
+                                }
                             });
 
-                            const altStatus = altStatusResponse.data.status;
+                            const altStatusData = await altStatusResponse.json();
+                            const altStatus = altStatusData.status;
                             console.log(`[${requestId}] Alternative poll result: ${altStatus}`);
 
                             if (altStatus === 'COMPLETED') {
-                                if (altStatusResponse.data.output && 
-                                    altStatusResponse.data.output[0] && 
-                                    altStatusResponse.data.output[0].image) {
+                                if (altStatusData.output && 
+                                    altStatusData.output[0] && 
+                                    altStatusData.output[0].image) {
                                     
-                                    const generatedImageUrl = altStatusResponse.data.output[0].image;
+                                    const generatedImageUrl = altStatusData.output[0].image;
                                     const totalTime = Math.round((Date.now() - startTime) / 1000);
                                     
                                     console.log(`[${requestId}] ✅ Generation completed after ${totalTime}s!`);
@@ -402,18 +384,18 @@ export default async function handler(req, res) {
         }
 
         // Handle other statuses
-        if (runpodResponse.data.status === 'FAILED') {
+        if (runpodData.status === 'FAILED') {
             throw new Error('Generation failed on RunPod server');
         }
 
-        if (runpodResponse.data.status === 'CANCELLED') {
+        if (runpodData.status === 'CANCELLED') {
             throw new Error('Generation was cancelled');
         }
 
         // If we reach here, we got an unexpected status
-        console.log(`[${requestId}] Unexpected status: ${runpodResponse.data.status}`);
-        console.log(`[${requestId}] Full response:`, JSON.stringify(runpodResponse.data, null, 2));
-        throw new Error(`Unexpected response status: ${runpodResponse.data.status}`);
+        console.log(`[${requestId}] Unexpected status: ${runpodData.status}`);
+        console.log(`[${requestId}] Full response:`, JSON.stringify(runpodData, null, 2));
+        throw new Error(`Unexpected response status: ${runpodData.status}`);
 
     } catch (error) {
         console.error(`[${requestId}] ❌ Error:`, error.message);
