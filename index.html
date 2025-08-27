@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cameleon - Il tuo Camerino Virtuale</title>
+    
+    <!-- Vercel Analytics -->
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
     <style>
         * {
             margin: 0;
@@ -614,6 +620,15 @@
             const file = input.files[0];
             
             if (file) {
+                // Track image upload event
+                if (window.va) {
+                    window.va('track', 'Image Upload', { 
+                        type: inputId === 'userImage' ? 'User Image' : 'Clothing Image',
+                        fileSize: file.size,
+                        fileType: file.type
+                    });
+                }
+                
                 // Store the file
                 if (inputId === 'userImage') {
                     userImageFile = file;
@@ -770,6 +785,16 @@
                 return;
             }
             
+            // Track generation start
+            if (window.va) {
+                window.va('track', 'Generation Started', {
+                    userImageSize: userImageFile.size,
+                    clothingImageSize: clothingImageFile.size,
+                    userImageType: userImageFile.type,
+                    clothingImageType: clothingImageFile.type
+                });
+            }
+            
             const generateButton = document.getElementById('generateButton');
             const resultContainer = document.getElementById('resultContainer');
             const resultPlaceholder = document.getElementById('resultPlaceholder');
@@ -806,6 +831,8 @@
             formData.append('userImage', userImageFile);
             formData.append('clothingImage', clothingImageFile);
             
+            const startTime = Date.now();
+            
             try {
                 // Create the API promise
                 const controller = new AbortController();
@@ -824,6 +851,14 @@
                 const { response, data } = await runProgressStages(apiPromise);
                 
                 if (response.ok && data.success && data.imageUrl) {
+                    // Track successful generation
+                    if (window.va) {
+                        window.va('track', 'Generation Completed', {
+                            success: true,
+                            processingTime: Date.now() - startTime
+                        });
+                    }
+                    
                     // Hide placeholder and progress
                     resultPlaceholder.style.display = 'none';
                     progressContainer.classList.remove('show');
@@ -848,6 +883,15 @@
                 
             } catch (error) {
                 console.error('Errore:', error);
+                
+                // Track generation error
+                if (window.va) {
+                    window.va('track', 'Generation Failed', {
+                        error: error.name || 'Unknown',
+                        message: error.message || 'Unknown error',
+                        processingTime: Date.now() - startTime
+                    });
+                }
                 
                 let errorMessage = 'Si è verificato un errore. Riprova più tardi.';
                 if (error.name === 'AbortError') {
@@ -878,6 +922,11 @@
         function downloadImage() {
             if (!currentGeneratedImageUrl) return;
             
+            // Track download event
+            if (window.va) {
+                window.va('track', 'Image Downloaded');
+            }
+            
             const link = document.createElement('a');
             link.href = currentGeneratedImageUrl;
             link.download = `cameleon-tryon-${Date.now()}.jpg`;
@@ -888,6 +937,11 @@
 
         function enlargeImage() {
             if (!currentGeneratedImageUrl) return;
+            
+            // Track enlarge event
+            if (window.va) {
+                window.va('track', 'Image Enlarged');
+            }
             
             const modal = document.getElementById('imageModal');
             const modalImage = document.getElementById('modalImage');
@@ -910,6 +964,15 @@
 
         // Initialize
         console.log('Cameleon Virtual Try-On Ready');
+        
+        // Track page view
+        if (window.va) {
+            window.va('track', 'Page View', {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                screenResolution: `${screen.width}x${screen.height}`
+            });
+        }
     </script>
 </body>
 </html>
