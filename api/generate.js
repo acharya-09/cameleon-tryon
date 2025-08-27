@@ -4,6 +4,10 @@
  * Never exposed to client/browser
  */
 
+import { IncomingForm } from 'formidable';
+import fs from 'fs';
+import path from 'path';
+
 // CRITICAL: Store these in environment variables, NEVER in code
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
 const RUNPOD_API_URL = process.env.RUNPOD_API_URL;
@@ -15,20 +19,19 @@ if (!RUNPOD_API_KEY || !RUNPOD_API_URL) {
 
 const RUNPOD_BASE_URL = RUNPOD_API_URL ? RUNPOD_API_URL.replace('/runsync', '').replace('/run', '') : '';
 
-// Simple in-memory rate limiting (use Redis in production)
+// Simple in-memory rate limiting
 const requestCounts = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5;
 
 /**
  * Upload image to free hosting service
- * ImgBB is more reliable than Imgur for server uploads
  */
 async function uploadImageToHost(imageBuffer) {
     try {
         const base64Image = imageBuffer.toString('base64');
         
-        // Option 1: Upload to ImgBB (RECOMMENDED - more reliable)
+        // Try ImgBB first (more reliable)
         const imgbbApiKey = process.env.IMGBB_API_KEY;
         
         if (imgbbApiKey) {
@@ -36,52 +39,44 @@ async function uploadImageToHost(imageBuffer) {
                 const formData = new URLSearchParams();
                 formData.append('image', base64Image);
                 
-                const imgbbResponse = await fetch(
-                    `https://api.imgbb.com/1/upload?key=${imgbbApiKey}`,
-                    {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        }
+                const response = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbApiKey}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
                     }
-                );
+                });
                 
-                const imgbbData = await imgbbResponse.json();
+                const data = await response.json();
                 
-                if (imgbbData.success) {
-                    console.log('Image uploaded to ImgBB successfully');
-                    return imgbbData.data.url;
+                if (data.success) {
+                    console.log('✅ Image uploaded to ImgBB successfully');
+                    return data.data.url;
                 }
             } catch (imgbbError) {
-                console.log('ImgBB upload failed, trying Imgur as fallback...');
+                console.log('ImgBB failed, trying Imgur...');
             }
-        } else {
-            console.log('No ImgBB API key provided, using Imgur...');
         }
         
-        // Option 2: Fallback to Imgur (less reliable from servers)
+        // Fallback to Imgur
         try {
-            const imgurResponse = await fetch(
-                'https://api.imgur.com/3/image',
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': 'Client-ID 8e5b0e2b5f8c9a3',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        image: base64Image,
-                        type: 'base64'
-                    })
-                }
-            );
+            const response = await fetch('https://api.imgur.com/3/image', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Client-ID 8e5b0e2b5f8c9a3',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: base64Image,
+                    type: 'base64'
+                })
+            });
             
-            const imgurData = await imgurResponse.json();
+            const data = await response.json();
             
-            if (imgurData.success) {
-                console.log('Image uploaded to Imgur as fallback');
-                return imgurData.data.link;
+            if (data.success) {
+                console.log('✅ Image uploaded to Imgur as fallback');
+                return data.data.link;
             }
         } catch (imgurError) {
             console.log('Imgur also failed');
@@ -102,46 +97,12 @@ function generateRequestId() {
     return `karthik-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
-/**
- * Parse multipart form data manually for Vercel
- */
-async function parseMultipartFormData(request) {
-    const boundary = request.headers['content-type']?.split('boundary=')[1];
-    if (!boundary) {
-        throw new Error('No boundary found in content-type');
-    }
-
-    const body = Buffer.from(await request.arrayBuffer());
-    const boundaryBuffer = Buffer.from(`--${boundary}`);
-    const parts = [];
-    
-    let start = 0;
-    while (true) {
-        const boundaryIndex = body.indexOf(boundaryBuffer, start);
-        if (boundaryIndex === -1) break;
-        
-        if (start > 0) {
-            const partData = body.slice(start, boundaryIndex);
-            const headerEndIndex = partData.indexOf('\r\n\r\n');
-            if (headerEndIndex !== -1) {
-                const headers = partData.slice(0, headerEndIndex).toString();
-                const content = partData.slice(headerEndIndex + 4, -2); // Remove trailing \r\n
-                
-                const nameMatch = headers.match(/name="([^"]+)"/);
-                if (nameMatch) {
-                    parts.push({
-                        name: nameMatch[1],
-                        data: content
-                    });
-                }
-            }
-        }
-        
-        start = boundaryIndex + boundaryBuffer.length + 2; // +2 for \r\n
-    }
-    
-    return parts;
-}
+// Disable body parser for multipart
+export const config = {
+    api: {
+        bodyParser: false,
+    },
+};
 
 // Main API handler
 export default async function handler(req, res) {
@@ -162,6 +123,7 @@ export default async function handler(req, res) {
     
     // Check environment variables
     if (!RUNPOD_API_KEY || !RUNPOD_API_URL) {
+        console.error('Missing environment variables');
         return res.status(500).json({ 
             error: 'Server configuration error',
             message: 'Missing API configuration'
@@ -170,6 +132,7 @@ export default async function handler(req, res) {
     
     // Generate request ID for tracking
     const requestId = Math.random().toString(36).substr(2, 8);
+    console.log(`[${requestId}] Processing request...`);
     
     // Apply rate limiting
     const clientId = req.ip || req.headers['x-forwarded-for'] || 'unknown';
@@ -201,34 +164,60 @@ export default async function handler(req, res) {
     }
     
     try {
-        console.log(`[${requestId}] Processing request...`);
+        // Parse form data using formidable
+        const form = new IncomingForm();
         
-        // Parse form data
-        const parts = await parseMultipartFormData(req);
-        
-        const userImagePart = parts.find(p => p.name === 'userImage');
-        const clothingImagePart = parts.find(p => p.name === 'clothingImage');
-        
-        if (!userImagePart || !clothingImagePart) {
+        const { fields, files } = await new Promise((resolve, reject) => {
+            form.parse(req, (err, fields, files) => {
+                if (err) reject(err);
+                else resolve({ fields, files });
+            });
+        });
+
+        console.log(`[${requestId}] Form parsed successfully`);
+        console.log(`[${requestId}] Files received:`, Object.keys(files));
+
+        // Get the uploaded files
+        const userImageFile = files.userImage;
+        const clothingImageFile = files.clothingImage;
+
+        if (!userImageFile || !clothingImageFile) {
+            console.log(`[${requestId}] Missing files - userImage: ${!!userImageFile}, clothingImage: ${!!clothingImageFile}`);
             return res.status(400).json({ 
                 error: 'Both user image and clothing image are required' 
             });
         }
 
+        console.log(`[${requestId}] Reading image files...`);
+
+        // Read the file buffers
+        const userImageBuffer = fs.readFileSync(userImageFile.filepath);
+        const clothingImageBuffer = fs.readFileSync(clothingImageFile.filepath);
+
+        console.log(`[${requestId}] Image buffers read - User: ${userImageBuffer.length} bytes, Clothing: ${clothingImageBuffer.length} bytes`);
         console.log(`[${requestId}] Uploading images to hosting service...`);
-        
+
         // Upload images to get public URLs
         const [userImageUrl, clothingImageUrl] = await Promise.all([
-            uploadImageToHost(userImagePart.data),
-            uploadImageToHost(clothingImagePart.data)
+            uploadImageToHost(userImageBuffer),
+            uploadImageToHost(clothingImageBuffer)
         ]);
 
         console.log(`[${requestId}] Images uploaded successfully`);
-        console.log(`[${requestId}] Calling virtual try-on API...`);
+        console.log(`[${requestId}] User image URL: ${userImageUrl}`);
+        console.log(`[${requestId}] Clothing image URL: ${clothingImageUrl}`);
+
+        // Clean up temporary files
+        try {
+            fs.unlinkSync(userImageFile.filepath);
+            fs.unlinkSync(clothingImageFile.filepath);
+        } catch (cleanupError) {
+            console.log(`[${requestId}] Cleanup warning:`, cleanupError.message);
+        }
+
+        console.log(`[${requestId}] Calling RunPod API...`);
 
         // Call RunPod API to start generation
-        console.log(`[${requestId}] Calling RunPod API to start generation...`);
-        
         const runpodPayload = {
             input: {
                 request_id: generateRequestId(),
@@ -240,6 +229,8 @@ export default async function handler(req, res) {
             }
         };
 
+        console.log(`[${requestId}] RunPod payload:`, JSON.stringify(runpodPayload, null, 2));
+
         const runpodResponse = await fetch(RUNPOD_API_URL, {
             method: 'POST',
             headers: {
@@ -249,8 +240,12 @@ export default async function handler(req, res) {
             body: JSON.stringify(runpodPayload)
         });
 
+        if (!runpodResponse.ok) {
+            throw new Error(`RunPod API error: ${runpodResponse.status} ${runpodResponse.statusText}`);
+        }
+
         const runpodData = await runpodResponse.json();
-        console.log(`[${requestId}] Initial response status:`, runpodData.status);
+        console.log(`[${requestId}] RunPod response:`, JSON.stringify(runpodData, null, 2));
 
         // Check if completed immediately (rare)
         if (runpodData.status === 'COMPLETED' && 
@@ -276,17 +271,15 @@ export default async function handler(req, res) {
 
             console.log(`[${requestId}] Job ${jobId} is IN_PROGRESS, starting polling...`);
 
-            // Poll for completion using the status endpoint
+            // Poll for completion
             const maxWaitTime = 300000; // 5 minutes total
             const startTime = Date.now();
             let pollInterval = 10000; // Start with 10 seconds
-            const maxPollInterval = 30000; // Max 30 seconds between polls
 
             while (Date.now() - startTime < maxWaitTime) {
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
                 try {
-                    // Use the correct status endpoint
                     const statusUrl = `${RUNPOD_BASE_URL}/status/${jobId}`;
                     console.log(`[${requestId}] Polling: ${statusUrl}`);
                     
@@ -295,6 +288,10 @@ export default async function handler(req, res) {
                             'Authorization': `Bearer ${RUNPOD_API_KEY}`
                         }
                     });
+
+                    if (!statusResponse.ok) {
+                        throw new Error(`Status check failed: ${statusResponse.status}`);
+                    }
 
                     const statusData = await statusResponse.json();
                     const status = statusData.status;
@@ -330,24 +327,24 @@ export default async function handler(req, res) {
                     // Continue polling for IN_PROGRESS, IN_QUEUE, etc.
                     console.log(`[${requestId}] Still ${status}, continuing to poll...`);
                     
-                    // Gradually increase poll interval to be more efficient
-                    pollInterval = Math.min(pollInterval * 1.2, maxPollInterval);
+                    // Gradually increase poll interval
+                    pollInterval = Math.min(pollInterval * 1.2, 30000);
 
                 } catch (pollError) {
                     console.log(`[${requestId}] Poll error:`, pollError.message);
                     
                     // Try alternative status endpoint format
-                    if (pollError.message.includes('404')) {
-                        try {
-                            const altStatusUrl = `${RUNPOD_BASE_URL}/${jobId}`;
-                            console.log(`[${requestId}] Trying alternative URL: ${altStatusUrl}`);
-                            
-                            const altStatusResponse = await fetch(altStatusUrl, {
-                                headers: {
-                                    'Authorization': `Bearer ${RUNPOD_API_KEY}`
-                                }
-                            });
+                    try {
+                        const altStatusUrl = `${RUNPOD_BASE_URL}/${jobId}`;
+                        console.log(`[${requestId}] Trying alternative URL: ${altStatusUrl}`);
+                        
+                        const altStatusResponse = await fetch(altStatusUrl, {
+                            headers: {
+                                'Authorization': `Bearer ${RUNPOD_API_KEY}`
+                            }
+                        });
 
+                        if (altStatusResponse.ok) {
                             const altStatusData = await altStatusResponse.json();
                             const altStatus = altStatusData.status;
                             console.log(`[${requestId}] Alternative poll result: ${altStatus}`);
@@ -368,17 +365,17 @@ export default async function handler(req, res) {
                                     });
                                 }
                             }
-                        } catch (altError) {
-                            console.log(`[${requestId}] Alternative URL also failed:`, altError.message);
                         }
+                    } catch (altError) {
+                        console.log(`[${requestId}] Alternative URL also failed:`, altError.message);
                     }
                     
-                    // Continue polling despite errors (might be temporary)
+                    // Continue polling despite errors
                     console.log(`[${requestId}] Continuing to poll despite error...`);
                 }
             }
 
-            // If we get here, we've timed out
+            // Timeout
             const totalTime = Math.round((Date.now() - startTime) / 1000);
             throw new Error(`Generation timed out after ${totalTime} seconds`);
         }
@@ -392,15 +389,16 @@ export default async function handler(req, res) {
             throw new Error('Generation was cancelled');
         }
 
-        // If we reach here, we got an unexpected status
+        // Unexpected status
         console.log(`[${requestId}] Unexpected status: ${runpodData.status}`);
         console.log(`[${requestId}] Full response:`, JSON.stringify(runpodData, null, 2));
         throw new Error(`Unexpected response status: ${runpodData.status}`);
 
     } catch (error) {
         console.error(`[${requestId}] ❌ Error:`, error.message);
+        console.error(`[${requestId}] Stack trace:`, error.stack);
         
-        // Return generic error to client (no sensitive details)
+        // Return generic error to client
         res.status(500).json({ 
             error: 'Failed to generate image',
             message: 'An error occurred during processing. Please try again.'
