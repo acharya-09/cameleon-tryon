@@ -3,5 +3,7 @@
     "api/generate.js": {
       "maxDuration": 300
     }
-  }
+  },
+  "buildCommand": "echo 'Static files ready'",
+  "outputDirectory": "."
 }
