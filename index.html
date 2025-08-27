@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cameleon - Il tuo Camerino Virtuale</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #2e1a47 0%, #3d2454 50%, #4a2b5f 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 60px 80px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 80px;
+            gap: 50px;
+        }
+
+        .logo {
+            height: 270px;
+            width: auto;
+            filter: drop-shadow(0 8px 25px rgba(168, 85, 247, 0.6));
+        }
+
+        .title {
+            font-size: 72px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .content-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 80px;
+            margin-bottom: 80px;
+            flex: 1;
+        }
+
+        .upload-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .section-title {
+            font-size: 42px;
+            margin-bottom: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: white;
+        }
+
+        .image-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            height: 550px;
+            width: 100%;
+            max-width: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            border: 3px dashed rgba(255, 255, 255, 0.4);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .image-container:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .image-container.has-image {
+            border: 2px solid rgba(168, 85, 247, 0.5);
+        }
+
+        .preview-image, .result-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            border-radius: 18px;
+        }
+
+        .upload-placeholder {
+            text-align: center;
+            padding: 50px;
+        }
+
+        .upload-icon {
+            font-size: 80px;
+            margin-bottom: 25px;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 22px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        .arrow-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 100px;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 0 40px;
+            flex: 0 0 auto;
+            height: 550px; /* Match the image container height */
+        }
+
+        .arrow {
+            animation: slideArrow 2s ease-in-out infinite;
+        }
+
+        @keyframes slideArrow {
+            0%, 100% { transform: translateX(0); opacity: 0.8; }
+            50% { transform: translateX(10px); opacity: 1; }
+        }
+
+        .result-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .result-container {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 25px;
+            height: 600px;
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-container.has-result {
+            border-color: rgba(52, 211, 153, 0.6);
+        }
+
+        .result-placeholder {
+            text-align: center;
+            opacity: 0.7;
+            padding: 50px;
+        }
+
+        .result-icon {
+            font-size: 100px;
+            margin-bottom: 25px;
+        }
+
+        .result-placeholder div {
+            font-size: 24px;
+        }
+
+        .animated-logo {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            height: 120px;
+            width: auto;
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .animated-logo.show {
+            animation: logoFade 3s ease-in-out infinite;
+        }
+
+        @keyframes logoFade {
+            0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+        }
+
+        .result-actions {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            display: none;
+            gap: 10px;
+        }
+
+        .result-container.has-result .result-actions {
+            display: flex;
+        }
+
+        .action-btn {
+            background: rgba(168, 85, 247, 0.9);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            background: rgba(168, 85, 247, 1);
+            transform: scale(1.1);
+        }
+
+        .generate-button {
+            background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            color: white;
+            border: none;
+            padding: 25px 80px;
+            font-size: 28px;
+            border-radius: 60px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 0 auto;
+            transition: all 0.3s ease;
+            font-weight: 700;
+            letter-spacing: 1px;
+            box-shadow: 0 15px 40px rgba(168, 85, 247, 0.4);
+        }
+
+        .generate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(168, 85, 247, 0.4);
+        }
+
+        .generate-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .generate-button.loading {
+            background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .remove-image:hover {
+            background: rgba(239, 68, 68, 1);
+            transform: scale(1.1);
+        }
+
+        .image-container.has-image .remove-image {
+            display: flex;
+        }
+
+        .success-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(52, 211, 153, 0.9);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 10px;
+            margin-top: 10px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 10px;
+            display: none;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 50px auto;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar-wrapper {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            height: 12px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+            border-radius: 30px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .progress-subtext {
+            text-align: center;
+            font-size: 18px;
+            opacity: 0.8;
+        }
+
+        .progress-timer {
+            text-align: center;
+            font-size: 16px;
+            opacity: 0.6;
+            margin-top: 15px;
+        }
+
+        /* Modal for enlarged image */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            margin-top: 5%;
+            border-radius: 10px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #a855f7;
+        }
+
+        @media (max-width: 1024px) {
+            .content-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .arrow-container {
+                transform: rotate(90deg);
+                padding: 20px 0;
+            }
+            
+            .title {
+                font-size: 36px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+            
+            .title {
+                font-size: 28px;
+            }
+            
+            .image-container,
+            .result-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="Logo.png" alt="Cameleon Logo" class="logo">
+            <h1 class="title">Il tuo Camerino Virtuale</h1>
+        </div>
+        
+        <div class="content-wrapper">
+            <!-- Upload della foto personale -->
+            <div class="upload-section">
+                <h2 class="section-title">La tua foto</h2>
+                <div class="image-container" id="userImageContainer" onclick="document.getElementById('userImage').click()">
+                    <input type="file" id="userImage" accept="image/*" onchange="handleImageUpload('userImage', 'userImageContainer')">
+                    <div class="upload-placeholder" id="userPlaceholder">
+                        <div class="upload-icon">📷</div>
+                        <div class="upload-text">Clicca per caricare la tua foto</div>
+                    </div>
+                    <button class="remove-image" onclick="removeImage(event, 'userImageContainer', 'userPlaceholder')">×</button>
+                </div>
+            </div>
+            
+            <!-- Upload del vestito -->
+            <div class="upload-section">
+                <h2 class="section-title">Il vestito</h2>
+                <div class="image-container" id="clothingImageContainer" onclick="document.getElementById('clothingImage').click()">
+                    <input type="file" id="clothingImage" accept="image/*" onchange="handleImageUpload('clothingImage', 'clothingImageContainer')">
+                    <div class="upload-placeholder" id="clothingPlaceholder">
+                        <div class="upload-icon">👗</div>
+                        <div class="upload-text">Clicca per caricare il vestito</div>
+                    </div>
+                    <button class="remove-image" onclick="removeImage(event, 'clothingImageContainer', 'clothingPlaceholder')">×</button>
+                </div>
+            </div>
+            
+            <!-- Freccia -->
+            <div class="arrow-container">
+                <span class="arrow">➤</span>
+            </div>
+            
+            <!-- Risultato -->
+            <div class="result-section">
+                <h2 class="section-title">Risultato</h2>
+                <div class="result-container" id="resultContainer">
+                    <div class="result-placeholder" id="resultPlaceholder">
+                        <div class="result-icon">✨</div>
+                        <div>Il tuo outfit virtuale apparirà qui</div>
+                    </div>
+                    <img src="Logo.png" alt="Cameleon" class="animated-logo" id="animatedLogo">
+                    <span class="success-badge" id="successBadge">✓ Generato</span>
+                    <div class="result-actions">
+                        <button class="action-btn" onclick="downloadImage()" title="Scarica immagine">💾</button>
+                        <button class="action-btn" onclick="enlargeImage()" title="Ingrandisci">🔍</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-text" id="progressText">Caricamento immagini...</div>
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="progress-subtext" id="progressSubtext">Preparazione in corso...</div>
+            <div class="progress-timer" id="progressTimer">Tempo trascorso: 0s</div>
+        </div>
+        
+        <button class="generate-button" id="generateButton" onclick="generateImage()" disabled>
+            <span>⭐</span>
+            <span>Genera</span>
+        </button>
+        
+        <div class="error-message" id="errorMessage"></div>
+    </div>
+
+    <!-- Modal for enlarged image -->
+    <div id="imageModal" class="modal">
+        <span class="modal-close" onclick="closeModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script>
+        let userImageFile = null;
+        let clothingImageFile = null;
+        let currentGeneratedImageUrl = null;
+
+        // Progress stages - these run while waiting for the real API response
+        const progressStages = [
+            { text: "Caricamento immagini...", subtext: "Upload delle immagini al server", progress: 10 },
+            { text: "Avvio generazione...", subtext: "Inizializzazione del processo AI", progress: 15 },
+            { text: "Analisi immagine modella...", subtext: "Riconoscimento pose e caratteristiche", progress: 25 },
+            { text: "Analisi capo d'abbigliamento...", subtext: "Estrazione pattern e stile", progress: 40 },
+            { text: "Generazione prompt...", subtext: "Creazione istruzioni AI avanzate", progress: 55 },
+            { text: "Generazione immagine avviata...", subtext: "Processo di rendering AI in corso", progress: 70 },
+            { text: "Elaborazione avanzata...", subtext: "Applicazione algoritmi di virtual try-on", progress: 80 },
+            { text: "Ottimizzazione finale...", subtext: "Miglioramento qualità e dettagli", progress: 90 }
+            // Note: "Completato!" will be shown only when real image arrives
+        ];
+
+        function handleImageUpload(inputId, containerId) {
+            const input = document.getElementById(inputId);
+            const container = document.getElementById(containerId);
+            const file = input.files[0];
+            
+            if (file) {
+                // Store the file
+                if (inputId === 'userImage') {
+                    userImageFile = file;
+                } else {
+                    clothingImageFile = file;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Remove placeholder and add image
+                    const placeholder = container.querySelector('.upload-placeholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'none';
+                    }
+                    
+                    // Remove existing image if any
+                    const existingImage = container.querySelector('.preview-image');
+                    if (existingImage) {
+                        existingImage.remove();
+                    }
+                    
+                    // Add new image
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'preview-image';
+                    container.appendChild(img);
+                    container.classList.add('has-image');
+                    
+                    // Check if both images are uploaded
+                    checkIfReadyToGenerate();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeImage(event, containerId, placeholderId) {
+            event.stopPropagation();
+            const container = document.getElementById(containerId);
+            const placeholder = document.getElementById(placeholderId);
+            
+            // Remove the image
+            const image = container.querySelector('.preview-image');
+            if (image) {
+                image.remove();
+            }
+            
+            // Show placeholder again
+            placeholder.style.display = 'block';
+            container.classList.remove('has-image');
+            
+            // Clear the file input
+            if (containerId === 'userImageContainer') {
+                document.getElementById('userImage').value = '';
+                userImageFile = null;
+            } else {
+                document.getElementById('clothingImage').value = '';
+                clothingImageFile = null;
+            }
+            
+            checkIfReadyToGenerate();
+        }
+
+        function checkIfReadyToGenerate() {
+            const generateButton = document.getElementById('generateButton');
+            if (userImageFile && clothingImageFile) {
+                generateButton.disabled = false;
+            } else {
+                generateButton.disabled = true;
+            }
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            setTimeout(() => {
+                errorElement.style.display = 'none';
+            }, 5000);
+        }
+
+        function updateProgress(stage, elapsed) {
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const progressSubtext = document.getElementById('progressSubtext');
+            const progressTimer = document.getElementById('progressTimer');
+            
+            progressBar.style.width = stage.progress + '%';
+            progressText.textContent = stage.text;
+            progressSubtext.textContent = stage.subtext;
+            progressTimer.textContent = `Tempo trascorso: ${Math.floor(elapsed / 1000)}s`;
+        }
+
+        async function runProgressStages(apiPromise) {
+            const startTime = Date.now();
+            let currentStageIndex = 0;
+            let isCompleted = false;
+            
+            // Function to cycle through progress stages
+            function nextStage() {
+                if (isCompleted) return;
+                
+                const elapsed = Date.now() - startTime;
+                
+                // If we've gone through all stages, stay at the last one
+                if (currentStageIndex >= progressStages.length) {
+                    const lastStage = progressStages[progressStages.length - 1];
+                    updateProgress(lastStage, elapsed);
+                    
+                    // Keep cycling through the last few stages
+                    currentStageIndex = Math.max(0, progressStages.length - 3);
+                    setTimeout(nextStage, 8000); // Wait 8 seconds before cycling
+                    return;
+                }
+                
+                const stage = progressStages[currentStageIndex];
+                updateProgress(stage, elapsed);
+                
+                currentStageIndex++;
+                
+                // Variable timing based on stage
+                let nextDelay = 5000; // Default 5 seconds
+                if (currentStageIndex <= 2) nextDelay = 3000; // Faster start
+                if (currentStageIndex >= 5) nextDelay = 8000; // Slower later stages
+                
+                setTimeout(nextStage, nextDelay);
+            }
+            
+            // Start the progress animation
+            nextStage();
+            
+            // Wait for the actual API response
+            try {
+                const result = await apiPromise;
+                isCompleted = true;
+                
+                // Show completion stage
+                const elapsed = Date.now() - startTime;
+                updateProgress({
+                    text: "Completato!",
+                    subtext: "Il tuo nuovo look è pronto!",
+                    progress: 100
+                }, elapsed);
+                
+                return result;
+            } catch (error) {
+                isCompleted = true;
+                throw error;
+            }
+        }
+
+        async function generateImage() {
+            if (!userImageFile || !clothingImageFile) {
+                showError('Per favore carica entrambe le immagini');
+                return;
+            }
+            
+            const generateButton = document.getElementById('generateButton');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultPlaceholder = document.getElementById('resultPlaceholder');
+            const successBadge = document.getElementById('successBadge');
+            const animatedLogo = document.getElementById('animatedLogo');
+            const progressContainer = document.getElementById('progressContainer');
+            
+            // Clean up any previous state
+            const existingResult = resultContainer.querySelector('.result-image');
+            if (existingResult) {
+                existingResult.remove();
+            }
+            successBadge.style.display = 'none';
+            resultContainer.classList.remove('has-result');
+            
+            // Reset placeholder
+            resultPlaceholder.style.display = 'flex';
+            resultPlaceholder.innerHTML = `
+                <div class="result-icon">✨</div>
+                <div>Il tuo outfit virtuale apparirà qui</div>
+            `;
+            
+            // Show loading state
+            generateButton.disabled = true;
+            generateButton.classList.add('loading');
+            generateButton.innerHTML = '<span>⏳</span><span>Generazione in corso...</span>';
+            
+            // Show progress bar and animated logo
+            progressContainer.classList.add('show');
+            animatedLogo.classList.add('show');
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('userImage', userImageFile);
+            formData.append('clothingImage', clothingImageFile);
+            
+            try {
+                // Create the API promise
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 320000);
+                
+                const apiPromise = fetch('/api/generate', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                }).then(response => {
+                    clearTimeout(timeoutId);
+                    return response.json().then(data => ({ response, data }));
+                });
+                
+                // Run progress stages while waiting for API
+                const { response, data } = await runProgressStages(apiPromise);
+                
+                if (response.ok && data.success && data.imageUrl) {
+                    // Hide placeholder and progress
+                    resultPlaceholder.style.display = 'none';
+                    progressContainer.classList.remove('show');
+                    animatedLogo.classList.remove('show');
+                    
+                    // Store the image URL
+                    currentGeneratedImageUrl = data.imageUrl;
+                    
+                    // Display the result image
+                    const resultImage = document.createElement('img');
+                    resultImage.src = data.imageUrl;
+                    resultImage.className = 'result-image';
+                    resultImage.onload = () => {
+                        successBadge.style.display = 'block';
+                        resultContainer.classList.add('has-result');
+                    };
+                    resultContainer.appendChild(resultImage);
+                    
+                } else {
+                    throw new Error(data.message || 'Errore nella generazione dell\'immagine');
+                }
+                
+            } catch (error) {
+                console.error('Errore:', error);
+                
+                let errorMessage = 'Si è verificato un errore. Riprova più tardi.';
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Timeout - La generazione ha richiesto troppo tempo.';
+                }
+                
+                showError(errorMessage);
+                
+                // Hide progress and logo
+                progressContainer.classList.remove('show');
+                animatedLogo.classList.remove('show');
+                
+                // Reset placeholder
+                resultPlaceholder.style.display = 'flex';
+                resultPlaceholder.innerHTML = `
+                    <div class="result-icon">❌</div>
+                    <div>Errore durante la generazione</div>
+                `;
+                
+            } finally {
+                // Reset button
+                generateButton.disabled = false;
+                generateButton.classList.remove('loading');
+                generateButton.innerHTML = '<span>⭐</span><span>Genera</span>';
+            }
+        }
+
+        function downloadImage() {
+            if (!currentGeneratedImageUrl) return;
+            
+            const link = document.createElement('a');
+            link.href = currentGeneratedImageUrl;
+            link.download = `cameleon-tryon-${Date.now()}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function enlargeImage() {
+            if (!currentGeneratedImageUrl) return;
+            
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            
+            modalImage.src = currentGeneratedImageUrl;
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // Initialize
+        console.log('Cameleon Virtual Try-On Ready');
+    </script>
+</body>
+</html>
