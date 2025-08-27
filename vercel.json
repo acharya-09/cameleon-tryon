@@ -1,13 +1,7 @@
 {
   "functions": {
-    "server.js": {
+    "api/generate.js": {
       "maxDuration": 300
     }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/server.js"
-    }
-  ]
+  }
 }
