@@ -94,7 +94,7 @@ async function uploadImageToHost(imageBuffer) {
  * Generate unique request ID
  */
 function generateRequestId() {
-    return `karthik-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `fitchek-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 // Disable body parser for multipart
