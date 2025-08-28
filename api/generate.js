@@ -165,7 +165,12 @@ export default async function handler(req, res) {
     
     try {
         // Parse form data using formidable
+        console.log(`[${requestId}] Starting form parsing...`);
         const form = new IncomingForm();
+        
+        // Set formidable options for better compatibility
+        form.keepExtensions = true;
+        form.maxFileSize = 10 * 1024 * 1024; // 10MB limit
         
         const { fields, files } = await new Promise((resolve, reject) => {
             form.parse(req, (err, fields, files) => {
@@ -177,9 +182,9 @@ export default async function handler(req, res) {
         console.log(`[${requestId}] Form parsed successfully`);
         console.log(`[${requestId}] Files received:`, Object.keys(files));
 
-        // Get the uploaded files
-        const userImageFile = files.userImage;
-        const clothingImageFile = files.clothingImage;
+        // Get the uploaded files (handle both formidable v2 and v3+ formats)
+        const userImageFile = Array.isArray(files.userImage) ? files.userImage[0] : files.userImage;
+        const clothingImageFile = Array.isArray(files.clothingImage) ? files.clothingImage[0] : files.clothingImage;
 
         if (!userImageFile || !clothingImageFile) {
             console.log(`[${requestId}] Missing files - userImage: ${!!userImageFile}, clothingImage: ${!!clothingImageFile}`);
@@ -398,10 +403,27 @@ export default async function handler(req, res) {
         console.error(`[${requestId}] ❌ Error:`, error.message);
         console.error(`[${requestId}] Stack trace:`, error.stack);
         
-        // Return generic error to client
-        res.status(500).json({ 
+        // More specific error handling
+        let errorMessage = 'An error occurred during processing. Please try again.';
+        let statusCode = 500;
+        
+        if (error.message.includes('formidable') || error.message.includes('parse')) {
+            errorMessage = 'Error processing uploaded images. Please try again.';
+            statusCode = 400;
+        } else if (error.message.includes('upload') || error.message.includes('hosting')) {
+            errorMessage = 'Error uploading images. Please try again.';
+            statusCode = 502;
+        } else if (error.message.includes('RunPod') || error.message.includes('API')) {
+            errorMessage = 'Service temporarily unavailable. Please try again.';
+            statusCode = 502;
+        }
+        
+        // Return error to client
+        res.status(statusCode).json({ 
             error: 'Failed to generate image',
-            message: 'An error occurred during processing. Please try again.'
+            message: errorMessage,
+            requestId: requestId,
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 }
