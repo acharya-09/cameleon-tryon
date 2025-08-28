@@ -170,7 +170,8 @@ export default async function handler(req, res) {
         
         // Set formidable options for better compatibility
         form.keepExtensions = true;
-        form.maxFileSize = 10 * 1024 * 1024; // 10MB limit
+        form.maxFileSize = 4.5 * 1024 * 1024; // 4.5MB per file (safe for Vercel's 5MB body limit)
+        form.maxTotalFileSize = 8 * 1024 * 1024; // Total limit for both files combined
         
         const { fields, files } = await new Promise((resolve, reject) => {
             form.parse(req, (err, fields, files) => {
@@ -181,10 +182,15 @@ export default async function handler(req, res) {
 
         console.log(`[${requestId}] Form parsed successfully`);
         console.log(`[${requestId}] Files received:`, Object.keys(files));
+        console.log(`[${requestId}] Fields received:`, Object.keys(fields));
 
         // Get the uploaded files (handle both formidable v2 and v3+ formats)
         const userImageFile = Array.isArray(files.userImage) ? files.userImage[0] : files.userImage;
         const clothingImageFile = Array.isArray(files.clothingImage) ? files.clothingImage[0] : files.clothingImage;
+        
+        // Get swap type from form fields
+        const swapType = Array.isArray(fields.swapType) ? fields.swapType[0] : fields.swapType || 'Auto';
+        console.log(`[${requestId}] Swap type selected: ${swapType}`);
 
         if (!userImageFile || !clothingImageFile) {
             console.log(`[${requestId}] Missing files - userImage: ${!!userImageFile}, clothingImage: ${!!clothingImageFile}`);
@@ -228,7 +234,7 @@ export default async function handler(req, res) {
                 request_id: generateRequestId(),
                 model_img: userImageUrl,
                 cloth_img: clothingImageUrl,
-                swap_type: "Auto",
+                swap_type: swapType,
                 output_format: "jpg",
                 output_quality: 90
             }
@@ -407,15 +413,22 @@ export default async function handler(req, res) {
         let errorMessage = 'An error occurred during processing. Please try again.';
         let statusCode = 500;
         
-        if (error.message.includes('formidable') || error.message.includes('parse')) {
-            errorMessage = 'Error processing uploaded images. Please try again.';
+        if (error.message.includes('maxFileSize') || error.message.includes('maxTotalFileSize') || 
+            error.message.includes('LIMIT_FILE_SIZE') || error.message.includes('File too large')) {
+            errorMessage = 'Image file too large. Please use images smaller than 4.5MB each. The app will automatically compress large images.';
+            statusCode = 413; // Payload Too Large
+        } else if (error.message.includes('formidable') || error.message.includes('parse')) {
+            errorMessage = 'Error processing uploaded images. Please try uploading different images.';
             statusCode = 400;
         } else if (error.message.includes('upload') || error.message.includes('hosting')) {
-            errorMessage = 'Error uploading images. Please try again.';
+            errorMessage = 'Error uploading images to processing service. Please try again.';
             statusCode = 502;
         } else if (error.message.includes('RunPod') || error.message.includes('API')) {
-            errorMessage = 'Service temporarily unavailable. Please try again.';
+            errorMessage = 'AI generation service temporarily unavailable. Please try again in a few minutes.';
             statusCode = 502;
+        } else if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+            errorMessage = 'Processing took too long. Please try again with smaller images.';
+            statusCode = 408; // Request Timeout
         }
         
         // Return error to client
