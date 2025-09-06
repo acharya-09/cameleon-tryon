@@ -33,6 +33,7 @@
             flex-direction: column;
             width: 100%;
             overflow: hidden; /* No container scrollbars */
+            position: relative; /* Ensure proper positioning context */
         }
 
         .header {
@@ -78,6 +79,7 @@
             padding: 0 10px;
             max-height: 55vh; /* Limit height */
             overflow: hidden; /* No content overflow */
+            position: relative; /* Maintain layout during generation */
         }
 
         .upload-section {
@@ -337,6 +339,8 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            flex-shrink: 0; /* Don't shrink the button */
+            z-index: 10; /* Keep button below progress overlay */
         }
 
         .generate-button::before {
@@ -447,14 +451,29 @@
 
         /* Progress Bar */
         .progress-container {
-            width: 100%;
-            max-width: 800px;
-            margin: 50px auto;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(46, 26, 71, 0.98);
             display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(15px);
+            flex-direction: column;
         }
 
         .progress-container.show {
-            display: block;
+            display: flex;
+        }
+
+        .progress-content {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
         .progress-bar-wrapper {
@@ -475,15 +494,31 @@
 
         .progress-text {
             text-align: center;
-            font-size: 24px;
-            margin-bottom: 12px;
-            font-weight: 600;
+            font-size: 32px;
+            margin-bottom: 15px;
+            font-weight: 700;
+            color: white;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .progress-subtext {
             text-align: center;
             font-size: 18px;
             opacity: 0.8;
+            color: rgba(255, 255, 255, 0.9);
+            animation: fadeInUp 0.7s ease-out;
         }
 
         .progress-timer {
@@ -491,6 +526,8 @@
             font-size: 16px;
             opacity: 0.6;
             margin-top: 15px;
+            color: rgba(255, 255, 255, 0.7);
+            animation: fadeInUp 0.9s ease-out;
         }
 
         /* Swap Type Selector - Updated with all new options */
@@ -987,12 +1024,14 @@
         </div>
 
         <div class="progress-container" id="progressContainer">
-            <div class="progress-text" id="progressText">Caricamento immagini...</div>
-            <div class="progress-bar-wrapper">
-                <div class="progress-bar" id="progressBar"></div>
+            <div class="progress-content">
+                <div class="progress-text" id="progressText">Caricamento immagini...</div>
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                <div class="progress-subtext" id="progressSubtext">Preparazione in corso...</div>
+                <div class="progress-timer" id="progressTimer">Tempo trascorso: 0s</div>
             </div>
-            <div class="progress-subtext" id="progressSubtext">Preparazione in corso...</div>
-            <div class="progress-timer" id="progressTimer">Tempo trascorso: 0s</div>
         </div>
         
         <button class="generate-button" id="generateButton" onclick="generateImage()" disabled>
