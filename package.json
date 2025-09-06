@@ -5,7 +5,9 @@
   "description": "Virtual Try-On application - Il tuo Camerino Virtuale",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'No build step needed for static files'"
+    "start": "vercel dev",
+    "build": "echo 'No build step needed for static files'",
+    "deploy": "vercel --prod"
   },
   "keywords": [
     "virtual-tryon",

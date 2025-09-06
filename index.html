@@ -6,9 +6,6 @@
     <title>Cameleon - Il tuo Camerino Virtuale</title>
     
     <!-- Vercel Analytics -->
-    <script>
-        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    </script>
     <script defer src="/_vercel/insights/script.js"></script>
     <style>
         * {
@@ -22,16 +19,18 @@
             background: linear-gradient(135deg, #2e1a47 0%, #3d2454 50%, #4a2b5f 100%);
             min-height: 100vh;
             color: white;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
         }
 
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 15px;
+            max-width: 100vw;
+            margin: 0;
+            padding: 10px;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            width: 100%;
         }
 
         .header {
@@ -39,31 +38,41 @@
             align-items: center;
             justify-content: center;
             margin-bottom: 25px;
-            gap: 20px;
-            flex-wrap: wrap;
+            gap: 30px;
+            padding: 20px 20px 0 20px; /* Add top padding to accommodate logo */
+            position: relative;
+            min-height: 120px; /* Ensure enough height for logo */
         }
 
         .logo {
-            height: 90px;
+            height: 120px;
             width: auto;
-            filter: drop-shadow(0 8px 25px rgba(168, 85, 247, 0.6));
+            filter: drop-shadow(0 12px 30px rgba(168, 85, 247, 0.8));
+            position: absolute;
+            left: 20px;
+            top: 50%; /* Center vertically within header */
+            transform: translateY(-50%); /* Perfect vertical centering */
         }
 
         .title {
-            font-size: 36px;
+            font-size: 48px;
             font-weight: 700;
             color: white;
-            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            text-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+            margin: 0;
             text-align: center;
+            flex: 1;
         }
 
         .content-wrapper {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 30px;
-            margin-bottom: 20px;
+            gap: 40px;
+            margin-bottom: 15px;
             flex: 1;
+            width: 100%;
+            padding: 0 10px;
         }
 
         .upload-section {
@@ -74,27 +83,47 @@
         }
 
         .section-title {
-            font-size: 24px;
-            margin-bottom: 20px;
+            font-size: 36px;
+            margin-bottom: 15px;
             text-align: center;
             font-weight: 600;
             color: white;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
         }
 
         .image-container {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 20px;
-            height: 280px;
+            height: 500px;
             width: 100%;
-            max-width: 280px;
+            max-width: 500px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
             overflow: hidden;
-            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border: 3px dashed rgba(255, 255, 255, 0.4);
             transition: all 0.3s ease;
             cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            aspect-ratio: 1;
+        }
+
+        .image-container.generating {
+            border: 3px solid rgba(168, 85, 247, 0.8);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { 
+                box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), 0 10px 30px rgba(0, 0, 0, 0.3);
+                border-color: rgba(168, 85, 247, 0.8);
+            }
+            50% { 
+                box-shadow: 0 0 50px rgba(168, 85, 247, 0.9), 0 10px 30px rgba(0, 0, 0, 0.3);
+                border-color: rgba(168, 85, 247, 1);
+            }
         }
 
         .image-container:hover {
@@ -155,11 +184,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 50px;
-            color: rgba(255, 255, 255, 0.8);
-            padding: 0 15px;
+            font-size: 80px;
+            color: rgba(255, 255, 255, 0.9);
+            padding: 0 20px;
             flex: 0 0 auto;
-            height: 280px; /* Match the image container height */
+            height: 500px; /* Match the image container height */
         }
 
         .arrow {
@@ -181,15 +210,34 @@
         .result-container {
             background: rgba(255, 255, 255, 0.08);
             border-radius: 20px;
-            height: 320px;
+            height: 550px;
             width: 100%;
-            max-width: 320px;
+            max-width: 550px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.3);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            aspect-ratio: 1;
+        }
+
+        .result-container.generating {
+            border: 3px solid rgba(52, 211, 153, 0.8);
+            box-shadow: 0 0 40px rgba(52, 211, 153, 0.6), 0 15px 40px rgba(0, 0, 0, 0.4);
+            animation: resultGlow 2.5s ease-in-out infinite;
+        }
+
+        @keyframes resultGlow {
+            0%, 100% { 
+                box-shadow: 0 0 40px rgba(52, 211, 153, 0.6), 0 15px 40px rgba(0, 0, 0, 0.4);
+                border-color: rgba(52, 211, 153, 0.8);
+            }
+            50% { 
+                box-shadow: 0 0 60px rgba(52, 211, 153, 0.9), 0 15px 40px rgba(0, 0, 0, 0.4);
+                border-color: rgba(52, 211, 153, 1);
+            }
         }
 
         .result-container.has-result {
@@ -213,22 +261,22 @@
 
         .animated-logo {
             position: absolute;
-            top: 50%;
+            top: 45%;
             left: 50%;
             transform: translate(-50%, -50%);
-            height: 80px;
+            height: 120px;
             width: auto;
             opacity: 0;
             z-index: 10;
         }
 
         .animated-logo.show {
-            animation: logoFade 3s ease-in-out infinite;
+            animation: logoFade 2s ease-in-out infinite;
         }
 
         @keyframes logoFade {
-            0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-            50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+            0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8) rotate(0deg); }
+            50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.2) rotate(5deg); }
         }
 
         .result-actions {
@@ -268,23 +316,59 @@
             background: linear-gradient(90deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
             color: white;
             border: none;
-            padding: 16px 40px;
-            font-size: 18px;
-            border-radius: 40px;
+            padding: 24px 80px;
+            font-size: 28px;
+            border-radius: 50px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin: 0 auto;
+            gap: 20px;
+            margin: 25px auto;
             transition: all 0.3s ease;
             font-weight: 700;
             letter-spacing: 1px;
-            box-shadow: 0 10px 30px rgba(168, 85, 247, 0.4);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), 0 15px 40px rgba(168, 85, 247, 0.3);
+            min-width: 250px;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .generate-button::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899, #6366f1);
+            border-radius: 52px;
+            z-index: -1;
+            animation: rotateGlow 3s linear infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes rotateGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .generate-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(168, 85, 247, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.8), 0 20px 50px rgba(168, 85, 247, 0.4);
+        }
+
+        .generate-button.loading {
+            animation: buttonPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes buttonPulse {
+            0%, 100% { 
+                box-shadow: 0 0 30px rgba(168, 85, 247, 0.6), 0 15px 40px rgba(168, 85, 247, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 50px rgba(168, 85, 247, 0.9), 0 15px 40px rgba(168, 85, 247, 0.5);
+            }
         }
 
         .generate-button:disabled {
@@ -404,36 +488,38 @@
             margin-top: 15px;
         }
 
-        /* Swap Type Selector - Single Line */
+        /* Swap Type Selector - Updated with all new options */
         .swap-type-section {
             width: 100%;
-            max-width: 900px;
-            margin: 25px auto 20px auto;
+            margin: 20px auto 20px auto;
             text-align: center;
+            padding: 0 10px;
         }
 
         .swap-type-title {
-            font-size: 20px;
+            font-size: 36px;
             font-weight: 600;
             color: white;
-            margin-bottom: 15px;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
         }
 
         .swap-type-options {
             display: flex;
-            justify-content: center;
-            gap: 12px;
+            justify-content: space-between;
+            gap: 8px;
             flex-wrap: nowrap;
-            overflow-x: auto;
-            padding: 5px;
+            padding: 0;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
         .swap-type-option {
             cursor: pointer;
             display: block;
-            flex: 0 0 auto;
-            min-width: 140px;
+            flex: 1;
+            min-width: 0;
         }
 
         .swap-type-option input[type="radio"] {
@@ -444,14 +530,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 12px 10px;
+            padding: 20px 16px;
             background: rgba(255, 255, 255, 0.08);
             border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
+            border-radius: 18px;
             transition: all 0.3s ease;
-            height: 75px;
+            height: 110px;
             justify-content: center;
             white-space: nowrap;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
         }
 
         .swap-type-option:hover .swap-type-label {
@@ -467,21 +554,21 @@
         }
 
         .swap-type-icon {
-            font-size: 22px;
-            margin-bottom: 4px;
+            font-size: 32px;
+            margin-bottom: 8px;
             display: block;
         }
 
         .swap-type-text {
-            font-size: 13px;
+            font-size: 18px;
             font-weight: 600;
             color: white;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
             display: block;
         }
 
         .swap-type-desc {
-            font-size: 10px;
+            font-size: 13px;
             color: rgba(255, 255, 255, 0.7);
             line-height: 1.2;
             display: block;
@@ -525,74 +612,56 @@
         }
 
         @media (max-width: 1024px) {
+            .header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 15px;
+                padding: 0 10px;
+            }
+
+            .title {
+                text-align: center;
+            }
+
             .content-wrapper {
                 flex-direction: column;
                 align-items: center;
                 gap: 30px;
+                padding: 0 5px;
             }
             
             .arrow-container {
                 transform: rotate(90deg);
                 padding: 15px 0;
                 height: auto;
+                font-size: 60px;
             }
             
             .title {
-                font-size: 36px;
+                font-size: 40px;
             }
             
             .logo {
                 height: 100px;
             }
-        }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
-            
-            .header {
-                flex-direction: column;
-                text-align: center;
-                gap: 20px;
-                margin-bottom: 30px;
-            }
-            
-            .title {
-                font-size: 32px;
-            }
-            
-            .logo {
-                height: 80px;
-            }
-            
             .section-title {
-                font-size: 20px;
+                font-size: 28px;
             }
-            
-            .image-container,
+
+            .image-container {
+                height: 400px;
+                max-width: 400px;
+            }
+
             .result-container {
-                height: 280px;
-                max-width: 250px;
-            }
-            
-            .generate-button {
-                padding: 14px 30px;
-                font-size: 16px;
-            }
-
-            .swap-type-section {
-                margin: 20px auto 15px auto;
-            }
-
-            .swap-type-title {
-                font-size: 18px;
-                margin-bottom: 12px;
+                height: 450px;
+                max-width: 450px;
             }
 
             .swap-type-options {
-                gap: 8px;
-                padding: 2px;
+                gap: 10px;
             }
 
             .swap-type-option {
@@ -600,22 +669,94 @@
             }
 
             .swap-type-label {
-                padding: 10px 8px;
-                height: 65px;
+                height: 100px;
+                padding: 18px 12px;
             }
 
             .swap-type-icon {
-                font-size: 18px;
-                margin-bottom: 3px;
+                font-size: 30px;
             }
 
             .swap-type-text {
-                font-size: 12px;
-                margin-bottom: 1px;
+                font-size: 17px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 8px;
+            }
+            
+            .header {
+                margin-bottom: 15px;
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .title {
+                font-size: 32px;
+                text-align: center;
+            }
+            
+            .logo {
+                height: 80px;
+            }
+            
+            .section-title {
+                font-size: 24px;
+                margin-bottom: 12px;
+            }
+            
+            .image-container {
+                height: 350px;
+                max-width: 350px;
+            }
+
+            .result-container {
+                height: 380px;
+                max-width: 380px;
+            }
+            
+            .generate-button {
+                padding: 18px 40px;
+                font-size: 22px;
+                margin: 20px auto;
+            }
+
+            .swap-type-section {
+                margin: 15px auto 15px auto;
+            }
+
+            .swap-type-title {
+                font-size: 26px;
+                margin-bottom: 15px;
+            }
+
+            .swap-type-options {
+                gap: 8px;
+            }
+
+            .swap-type-option {
+                min-width: 100px;
+            }
+
+            .swap-type-label {
+                padding: 14px 8px;
+                height: 90px;
+            }
+
+            .swap-type-icon {
+                font-size: 26px;
+                margin-bottom: 4px;
+            }
+
+            .swap-type-text {
+                font-size: 15px;
+                margin-bottom: 3px;
             }
 
             .swap-type-desc {
-                font-size: 9px;
+                font-size: 10px;
             }
         }
 
@@ -665,31 +806,31 @@
             }
 
             .swap-type-options {
-                gap: 6px;
+                gap: 4px;
                 padding: 2px;
             }
 
             .swap-type-option {
-                min-width: 100px;
+                min-width: 75px;
             }
 
             .swap-type-label {
-                padding: 8px 6px;
-                height: 58px;
+                padding: 6px 4px;
+                height: 55px;
             }
 
             .swap-type-icon {
-                font-size: 16px;
+                font-size: 14px;
                 margin-bottom: 2px;
             }
 
             .swap-type-text {
-                font-size: 11px;
+                font-size: 10px;
                 margin-bottom: 1px;
             }
 
             .swap-type-desc {
-                font-size: 8px;
+                font-size: 7px;
             }
         }
     </style>
@@ -704,12 +845,12 @@
         <div class="content-wrapper">
             <!-- Upload della foto personale -->
             <div class="upload-section">
-                <h2 class="section-title">La tua foto</h2>
+                <h2 class="section-title">Modella</h2>
                 <div class="image-container" id="userImageContainer" onclick="document.getElementById('userImage').click()">
                     <input type="file" id="userImage" accept="image/*" onchange="handleImageUpload('userImage', 'userImageContainer')">
                     <div class="upload-placeholder" id="userPlaceholder">
                         <div class="upload-icon">📷</div>
-                        <div class="upload-text">Clicca o trascina la tua foto<br><small style="opacity: 0.7;">Max 4MB - Compressione automatica</small></div>
+                        <div class="upload-text">Clicca per caricare la modella<br><small style="opacity: 0.7;">Massimo 4MB - Compressione automatica</small></div>
                     </div>
                     <button class="remove-image" onclick="removeImage(event, 'userImageContainer', 'userPlaceholder')">×</button>
                 </div>
@@ -717,12 +858,12 @@
             
             <!-- Upload del vestito -->
             <div class="upload-section">
-                <h2 class="section-title">Il vestito</h2>
+                <h2 class="section-title">Prodotto</h2>
                 <div class="image-container" id="clothingImageContainer" onclick="document.getElementById('clothingImage').click()">
                     <input type="file" id="clothingImage" accept="image/*" onchange="handleImageUpload('clothingImage', 'clothingImageContainer')">
                     <div class="upload-placeholder" id="clothingPlaceholder">
                         <div class="upload-icon">👗</div>
-                        <div class="upload-text">Clicca o trascina il vestito<br><small style="opacity: 0.7;">Max 4MB - Compressione automatica</small></div>
+                        <div class="upload-text">Clicca per caricare il prodotto<br><small style="opacity: 0.7;">Massimo 4MB - Compressione automatica</small></div>
                     </div>
                     <button class="remove-image" onclick="removeImage(event, 'clothingImageContainer', 'clothingPlaceholder')">×</button>
                 </div>
@@ -752,40 +893,88 @@
         </div>
         
         <!-- Progress Bar -->
-        <!-- Swap Type Selector -->
+        <!-- Swap Type Selector - Updated with all new categories -->
         <div class="swap-type-section">
             <h3 class="swap-type-title">Tipo di Prova</h3>
             <div class="swap-type-options">
                 <label class="swap-type-option">
-                    <input type="radio" name="swapType" value="Auto" checked>
+                    <input type="radio" name="swapType" value="Full Outfit" checked>
                     <span class="swap-type-label">
-                        <span class="swap-type-icon">🔄</span>
-                        <span class="swap-type-text">Auto</span>
-                        <span class="swap-type-desc">Rilevamento automatico</span>
+                        <span class="swap-type-icon">👔</span>
+                        <span class="swap-type-text">Completo</span>
+                        <span class="swap-type-desc">Outfit intero</span>
                     </span>
                 </label>
                 <label class="swap-type-option">
-                    <input type="radio" name="swapType" value="Upper-body">
+                    <input type="radio" name="swapType" value="Upper-Body">
                     <span class="swap-type-label">
                         <span class="swap-type-icon">👕</span>
-                        <span class="swap-type-text">Upper-body</span>
-                        <span class="swap-type-desc">Maglie, camicie, giacche</span>
+                        <span class="swap-type-text">Sopra</span>
+                        <span class="swap-type-desc">Maglie, camicie</span>
                     </span>
                 </label>
                 <label class="swap-type-option">
-                    <input type="radio" name="swapType" value="Lower-body">
+                    <input type="radio" name="swapType" value="Lower-Body">
                     <span class="swap-type-label">
                         <span class="swap-type-icon">👖</span>
-                        <span class="swap-type-text">Lower-body</span>
-                        <span class="swap-type-desc">Pantaloni, gonne, shorts</span>
+                        <span class="swap-type-text">Sotto</span>
+                        <span class="swap-type-desc">Pantaloni, gonne</span>
                     </span>
                 </label>
                 <label class="swap-type-option">
-                    <input type="radio" name="swapType" value="Dresses">
+                    <input type="radio" name="swapType" value="Dress">
                     <span class="swap-type-label">
                         <span class="swap-type-icon">👗</span>
-                        <span class="swap-type-text">Dresses</span>
-                        <span class="swap-type-desc">Vestiti, abiti completi</span>
+                        <span class="swap-type-text">Vestito</span>
+                        <span class="swap-type-desc">Abiti, vestiti</span>
+                    </span>
+                </label>
+                <label class="swap-type-option">
+                    <input type="radio" name="swapType" value="Shoes">
+                    <span class="swap-type-label">
+                        <span class="swap-type-icon">👠</span>
+                        <span class="swap-type-text">Scarpe</span>
+                        <span class="swap-type-desc">Calzature</span>
+                    </span>
+                </label>
+                <label class="swap-type-option">
+                    <input type="radio" name="swapType" value="Headwear">
+                    <span class="swap-type-label">
+                        <span class="swap-type-icon">🎩</span>
+                        <span class="swap-type-text">Cappelli</span>
+                        <span class="swap-type-desc">Copricapo</span>
+                    </span>
+                </label>
+                <label class="swap-type-option">
+                    <input type="radio" name="swapType" value="Eyewear">
+                    <span class="swap-type-label">
+                        <span class="swap-type-icon">🕶️</span>
+                        <span class="swap-type-text">Occhiali</span>
+                        <span class="swap-type-desc">Da sole, vista</span>
+                    </span>
+                </label>
+                <label class="swap-type-option">
+                    <input type="radio" name="swapType" value="Bodywear">
+                    <span class="swap-type-label">
+                        <span class="swap-type-icon">🧣</span>
+                        <span class="swap-type-text">Accessori</span>
+                        <span class="swap-type-desc">Sciarpe, cravatte</span>
+                    </span>
+                </label>
+                <label class="swap-type-option">
+                    <input type="radio" name="swapType" value="Jewelry">
+                    <span class="swap-type-label">
+                        <span class="swap-type-icon">💎</span>
+                        <span class="swap-type-text">Gioielli</span>
+                        <span class="swap-type-desc">Collane, anelli</span>
+                    </span>
+                </label>
+                <label class="swap-type-option">
+                    <input type="radio" name="swapType" value="Bags">
+                    <span class="swap-type-label">
+                        <span class="swap-type-icon">👜</span>
+                        <span class="swap-type-text">Borse</span>
+                        <span class="swap-type-desc">Zaini, borsette</span>
                     </span>
                 </label>
             </div>
@@ -822,7 +1011,7 @@
         // Get selected swap type
         function getSelectedSwapType() {
             const selectedRadio = document.querySelector('input[name="swapType"]:checked');
-            return selectedRadio ? selectedRadio.value : 'Auto';
+            return selectedRadio ? selectedRadio.value : 'Full Outfit';
         }
 
         // Drag and Drop functionality
@@ -896,18 +1085,88 @@
             }
         }
 
-        // Progress stages - these run while waiting for the real API response
-        const progressStages = [
-            { text: "Caricamento immagini...", subtext: "Upload delle immagini al server", progress: 10 },
-            { text: "Avvio generazione...", subtext: "Inizializzazione del processo AI", progress: 15 },
-            { text: "Analisi immagine modella...", subtext: "Riconoscimento pose e caratteristiche", progress: 25 },
-            { text: "Analisi capo d'abbigliamento...", subtext: "Estrazione pattern e stile", progress: 40 },
-            { text: "Generazione prompt...", subtext: "Creazione istruzioni AI avanzate", progress: 55 },
-            { text: "Generazione immagine avviata...", subtext: "Processo di rendering AI in corso", progress: 70 },
-            { text: "Elaborazione avanzata...", subtext: "Applicazione algoritmi di virtual try-on", progress: 80 },
-            { text: "Ottimizzazione finale...", subtext: "Miglioramento qualità e dettagli", progress: 90 }
-            // Note: "Completato!" will be shown only when real image arrives
-        ];
+        // Dynamic progress stages based on swap type
+        function getProgressStages(swapType) {
+            const baseStages = [
+                { text: "Caricamento immagini...", subtext: "Upload delle immagini al server", progress: 15 },
+                { text: "Avvio generazione AI...", subtext: "Inizializzazione Gemini Nano Banana", progress: 25 }
+            ];
+
+            const swapTypeStages = {
+                'Full Outfit': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento pose e caratteristiche", progress: 40 },
+                    { text: "Analisi outfit completo...", subtext: "Estrazione stile e pattern", progress: 55 },
+                    { text: "Rendering outfit...", subtext: "Applicazione completo sulla modella", progress: 70 },
+                    { text: "Fusione realistica...", subtext: "Adattamento perfetto al corpo", progress: 85 },
+                    { text: "Ottimizzazione finale...", subtext: "Perfezionamento outfit completo", progress: 95 }
+                ],
+                'Upper-Body': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento pose e busto", progress: 40 },
+                    { text: "Analisi capo superiore...", subtext: "Estrazione pattern e taglio", progress: 55 },
+                    { text: "Rendering capo...", subtext: "Applicazione su parte superiore", progress: 70 },
+                    { text: "Adattamento corporeo...", subtext: "Fusione naturale con busto", progress: 85 },
+                    { text: "Rifinitura dettagli...", subtext: "Perfezionamento capo superiore", progress: 95 }
+                ],
+                'Lower-Body': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento pose e gambe", progress: 40 },
+                    { text: "Analisi capo inferiore...", subtext: "Estrazione forma e stile", progress: 55 },
+                    { text: "Rendering capo...", subtext: "Applicazione su parte inferiore", progress: 70 },
+                    { text: "Adattamento gambe...", subtext: "Fusione naturale con corpo", progress: 85 },
+                    { text: "Rifinitura dettagli...", subtext: "Perfezionamento capo inferiore", progress: 95 }
+                ],
+                'Dress': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento pose e figura", progress: 40 },
+                    { text: "Analisi vestito...", subtext: "Estrazione stile e vestibilità", progress: 55 },
+                    { text: "Rendering vestito...", subtext: "Applicazione abito completo", progress: 70 },
+                    { text: "Drappeggio tessuto...", subtext: "Simulazione caduta naturale", progress: 85 },
+                    { text: "Rifinitura elegante...", subtext: "Perfezionamento vestito", progress: 95 }
+                ],
+                'Shoes': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento piedi e postura", progress: 40 },
+                    { text: "Analisi calzature...", subtext: "Estrazione forma e stile", progress: 55 },
+                    { text: "Rendering scarpe...", subtext: "Applicazione calzature", progress: 70 },
+                    { text: "Adattamento piedi...", subtext: "Fusione naturale con piedi", progress: 85 },
+                    { text: "Rifinitura scarpe...", subtext: "Perfezionamento calzature", progress: 95 }
+                ],
+                'Headwear': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento testa e capelli", progress: 40 },
+                    { text: "Analisi cappello...", subtext: "Estrazione forma e dimensioni", progress: 55 },
+                    { text: "Rendering copricapo...", subtext: "Applicazione su testa", progress: 70 },
+                    { text: "Adattamento cranio...", subtext: "Fusione naturale con testa", progress: 85 },
+                    { text: "Rifinitura cappello...", subtext: "Perfezionamento copricapo", progress: 95 }
+                ],
+                'Eyewear': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento viso e occhi", progress: 40 },
+                    { text: "Analisi occhiali...", subtext: "Estrazione forma e montatura", progress: 55 },
+                    { text: "Rendering occhiali...", subtext: "Applicazione su viso", progress: 70 },
+                    { text: "Adattamento viso...", subtext: "Fusione naturale con naso", progress: 85 },
+                    { text: "Rifinitura occhiali...", subtext: "Perfezionamento montatura", progress: 95 }
+                ],
+                'Bodywear': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento collo e spalle", progress: 40 },
+                    { text: "Analisi accessorio...", subtext: "Estrazione forma e tessuto", progress: 55 },
+                    { text: "Rendering accessorio...", subtext: "Applicazione su corpo", progress: 70 },
+                    { text: "Drappeggio naturale...", subtext: "Simulazione caduta tessuto", progress: 85 },
+                    { text: "Rifinitura accessorio...", subtext: "Perfezionamento dettagli", progress: 95 }
+                ],
+                'Jewelry': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento collo e mani", progress: 40 },
+                    { text: "Analisi gioielli...", subtext: "Estrazione materiali e forma", progress: 55 },
+                    { text: "Rendering gioielli...", subtext: "Applicazione ornamenti", progress: 70 },
+                    { text: "Riflessi metallici...", subtext: "Simulazione luci e brillantezza", progress: 85 },
+                    { text: "Rifinitura gioielli...", subtext: "Perfezionamento ornamenti", progress: 95 }
+                ],
+                'Bags': [
+                    { text: "Analisi modella...", subtext: "Riconoscimento spalle e mani", progress: 40 },
+                    { text: "Analisi borsa...", subtext: "Estrazione forma e materiali", progress: 55 },
+                    { text: "Rendering borsa...", subtext: "Applicazione accessorio", progress: 70 },
+                    { text: "Posizionamento naturale...", subtext: "Adattamento a pose e corpo", progress: 85 },
+                    { text: "Rifinitura borsa...", subtext: "Perfezionamento accessorio", progress: 95 }
+                ]
+            };
+
+            return [...baseStages, ...(swapTypeStages[swapType] || swapTypeStages['Full Outfit'])];
+        }
 
         // Image compression utility (quality compression only, no resizing)
         function compressImage(file, maxSizeMB = 3.5, quality = 0.8) {
@@ -1051,7 +1310,7 @@
                     if (placeholder) {
                         placeholder.innerHTML = `
                             <div class="upload-icon">${inputId === 'userImage' ? '📷' : '👗'}</div>
-                            <div class="upload-text">Clicca o trascina ${inputId === 'userImage' ? 'la tua foto' : 'il vestito'}<br><small style="opacity: 0.7;">Max 4MB - Compressione automatica</small></div>
+                            <div class="upload-text">Clicca per caricare ${inputId === 'userImage' ? 'la modella' : 'il prodotto'}<br><small style="opacity: 0.7;">Massimo 4MB - Compressione automatica</small></div>
                         `;
                     }
                 }
@@ -1115,10 +1374,11 @@
             progressTimer.textContent = `Tempo trascorso: ${Math.floor(elapsed / 1000)}s`;
         }
 
-        async function runProgressStages(apiPromise) {
+        async function runProgressStages(apiPromise, swapType) {
             const startTime = Date.now();
             let currentStageIndex = 0;
             let isCompleted = false;
+            const progressStages = getProgressStages(swapType);
             
             // Function to cycle through progress stages
             function nextStage() {
@@ -1142,10 +1402,10 @@
                 
                 currentStageIndex++;
                 
-                // Variable timing based on stage
-                let nextDelay = 5000; // Default 5 seconds
-                if (currentStageIndex <= 2) nextDelay = 3000; // Faster start
-                if (currentStageIndex >= 5) nextDelay = 8000; // Slower later stages
+                // Variable timing optimized for ~18s total generation
+                let nextDelay = 3000; // Default 3 seconds (faster overall)
+                if (currentStageIndex <= 2) nextDelay = 2000; // Very fast start
+                if (currentStageIndex >= 4) nextDelay = 4000; // Moderate later stages
                 
                 setTimeout(nextStage, nextDelay);
             }
@@ -1158,11 +1418,23 @@
                 const result = await apiPromise;
                 isCompleted = true;
                 
-                // Show completion stage
+                // Show completion stage with swap type specific message
                 const elapsed = Date.now() - startTime;
+                const completionMessages = {
+                    'Shoes': 'Le tue scarpe sono pronte!',
+                    'Headwear': 'Il tuo cappello è perfetto!',
+                    'Eyewear': 'I tuoi occhiali sono pronti!',
+                    'Jewelry': 'I tuoi gioielli brillano!',
+                    'Bags': 'La tua borsa è pronta!',
+                    'Upper-Body': 'Il tuo capo è perfetto!',
+                    'Lower-Body': 'Il tuo capo è pronto!',
+                    'Dress': 'Il tuo vestito è elegante!',
+                    'Bodywear': 'Il tuo accessorio è perfetto!'
+                };
+                
                 updateProgress({
                     text: "Completato!",
-                    subtext: "Il tuo nuovo look è pronto!",
+                    subtext: completionMessages[swapType] || "Il tuo nuovo look è pronto!",
                     progress: 100
                 }, elapsed);
                 
@@ -1218,6 +1490,11 @@
             generateButton.classList.add('loading');
             generateButton.innerHTML = '<span>⏳</span><span>Generazione in corso...</span>';
             
+            // Add glowing effects to containers
+            document.getElementById('userImageContainer').classList.add('generating');
+            document.getElementById('clothingImageContainer').classList.add('generating');
+            resultContainer.classList.add('generating');
+            
             // Show progress bar and animated logo
             progressContainer.classList.add('show');
             animatedLogo.classList.add('show');
@@ -1245,7 +1522,7 @@
                 });
                 
                 // Run progress stages while waiting for API
-                const { response, data } = await runProgressStages(apiPromise);
+                const { response, data } = await runProgressStages(apiPromise, selectedSwapType);
                 
                 if (response.ok && data.success && data.imageUrl) {
                     // Track successful generation
@@ -1256,10 +1533,15 @@
                         });
                     }
                     
-                    // Hide placeholder and progress
+                    // Hide placeholder and progress, remove glowing effects
                     resultPlaceholder.style.display = 'none';
                     progressContainer.classList.remove('show');
                     animatedLogo.classList.remove('show');
+                    
+                    // Remove glowing effects
+                    document.getElementById('userImageContainer').classList.remove('generating');
+                    document.getElementById('clothingImageContainer').classList.remove('generating');
+                    resultContainer.classList.remove('generating');
                     
                     // Store the image URL
                     currentGeneratedImageUrl = data.imageUrl;
@@ -1297,9 +1579,14 @@
                 
                 showError(errorMessage);
                 
-                // Hide progress and logo
+                // Hide progress and logo, remove glowing effects
                 progressContainer.classList.remove('show');
                 animatedLogo.classList.remove('show');
+                
+                // Remove glowing effects on error
+                document.getElementById('userImageContainer').classList.remove('generating');
+                document.getElementById('clothingImageContainer').classList.remove('generating');
+                resultContainer.classList.remove('generating');
                 
                 // Reset placeholder
                 resultPlaceholder.style.display = 'flex';
@@ -1309,10 +1596,15 @@
                 `;
                 
             } finally {
-                // Reset button
+                // Reset button and remove all glowing effects
                 generateButton.disabled = false;
                 generateButton.classList.remove('loading');
                 generateButton.innerHTML = '<span>⭐</span><span>Genera</span>';
+                
+                // Ensure all glowing effects are removed
+                document.getElementById('userImageContainer').classList.remove('generating');
+                document.getElementById('clothingImageContainer').classList.remove('generating');
+                resultContainer.classList.remove('generating');
             }
         }
 
@@ -1360,7 +1652,7 @@
         }
 
         // Initialize
-        console.log('Cameleon Virtual Try-On Ready');
+        // console.log('Cameleon Virtual Try-On Ready - Gemini Powered');
         
         // Setup drag and drop functionality
         setupDragAndDrop();
@@ -1370,7 +1662,8 @@
             window.va('track', 'Page View', {
                 userAgent: navigator.userAgent,
                 language: navigator.language,
-                screenResolution: `${screen.width}x${screen.height}`
+                screenResolution: `${screen.width}x${screen.height}`,
+                version: 'gemini-powered'
             });
         }
     </script>
