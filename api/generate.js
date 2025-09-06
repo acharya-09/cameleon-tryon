@@ -1,5 +1,5 @@
 /**
- * VERCEL SERVERLESS API for Google Gemini Nano Banana
+ * VERCEL SERVERLESS API for AI Image Generation
  * Vercel-compatible implementation with environment variables
  */
 
@@ -7,8 +7,8 @@ import { IncomingForm } from 'formidable';
 import fs from 'fs';
 
 // CRITICAL: Use environment variables for API key
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent';
+const AI_API_KEY = process.env.GEMINI_API_KEY;
+const AI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent';
 
 // Simple in-memory rate limiting
 const requestCounts = new Map();
@@ -58,8 +58,8 @@ export default async function handler(req, res) {
     }
     
     // Check API key
-    if (!GEMINI_API_KEY) {
-        console.error('❌ Missing Gemini API key - Please set GEMINI_API_KEY environment variable');
+    if (!AI_API_KEY) {
+        console.error('❌ Missing AI API key - Please set GEMINI_API_KEY environment variable');
         return res.status(500).json({ 
             error: 'Server configuration error',
             message: 'Missing API configuration. Please contact support.'
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     
     // Generate request ID
     const requestId = Math.random().toString(36).substr(2, 8);
-    console.log(`\n🚀 [${requestId}] Starting Gemini request...`);
+    console.log(`\n🚀 [${requestId}] Starting AI request...`);
     
     // Rate limiting
     const clientId = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
@@ -162,8 +162,8 @@ export default async function handler(req, res) {
         const dynamicPrompt = generatePrompt(swapType);
         console.log(`✨ [${requestId}] Generated dynamic prompt for ${swapType}`);
 
-        // Prepare Gemini payload
-        const geminiPayload = {
+        // Prepare AI payload
+        const aiPayload = {
             contents: [{
                 parts: [
                     { text: dynamicPrompt },
@@ -183,34 +183,34 @@ export default async function handler(req, res) {
             }]
         };
 
-        console.log(`🤖 [${requestId}] Calling Gemini API...`);
+        console.log(`🤖 [${requestId}] Calling AI API...`);
 
-        // Call Gemini API
-        const geminiResponse = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        // Call AI API
+        const aiResponse = await fetch(`${AI_API_URL}?key=${AI_API_KEY}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(geminiPayload)
+            body: JSON.stringify(aiPayload)
         });
 
-        if (!geminiResponse.ok) {
-            const errorText = await geminiResponse.text();
-            console.error(`❌ [${requestId}] Gemini API error: ${geminiResponse.status}`);
+        if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            console.error(`❌ [${requestId}] AI API error: ${aiResponse.status}`);
             console.error(`❌ [${requestId}] Error details:`, errorText);
-            throw new Error(`Gemini API error: ${geminiResponse.status} - ${errorText}`);
+            throw new Error(`AI API error: ${aiResponse.status} - ${errorText}`);
         }
 
-        const geminiData = await geminiResponse.json();
-        console.log(`📨 [${requestId}] Gemini response received`);
+        const aiData = await aiResponse.json();
+        console.log(`📨 [${requestId}] AI response received`);
 
         // Extract generated image
-        if (geminiData.candidates && 
-            geminiData.candidates[0] && 
-            geminiData.candidates[0].content && 
-            geminiData.candidates[0].content.parts) {
+        if (aiData.candidates && 
+            aiData.candidates[0] && 
+            aiData.candidates[0].content && 
+            aiData.candidates[0].content.parts) {
             
-            const parts = geminiData.candidates[0].content.parts;
+            const parts = aiData.candidates[0].content.parts;
             let generatedImageData = null;
             
             for (const part of parts) {
@@ -236,8 +236,8 @@ export default async function handler(req, res) {
 
         // No image data found
         console.error(`❌ [${requestId}] No image data in response`);
-        if (geminiData.error) {
-            throw new Error(`Gemini API error: ${geminiData.error.message}`);
+        if (aiData.error) {
+            throw new Error(`AI API error: ${aiData.error.message}`);
         }
         
         throw new Error('No image generated in response');
@@ -256,7 +256,7 @@ export default async function handler(req, res) {
         } else if (error.message.includes('formidable') || error.message.includes('parse')) {
             errorMessage = 'Error processing uploaded images. Please try different images.';
             statusCode = 400;
-        } else if (error.message.includes('Gemini') || error.message.includes('API')) {
+        } else if (error.message.includes('AI') || error.message.includes('API')) {
             errorMessage = 'AI generation service temporarily unavailable. Please try again in a few minutes.';
             statusCode = 502;
         } else if (error.message.includes('quota') || error.message.includes('limit')) {
