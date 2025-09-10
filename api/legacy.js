@@ -228,6 +228,7 @@ export default async function handler(req, res) {
                 model_img: userImageUrl,
                 cloth_img: clothingImageUrl,
                 swap_type: swapType,
+                premium_user: true,
                 output_format: "jpg",
                 output_quality: 90
             }
