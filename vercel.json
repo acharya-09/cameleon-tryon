@@ -3,10 +3,20 @@
     "api/generate.js": {
       "maxDuration": 300,
       "memory": 1024
+    },
+    "api/legacy.js": {
+      "maxDuration": 300,
+      "memory": 1024
     }
   },
   "buildCommand": "echo 'Static files ready'",
   "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/legacy",
+      "destination": "/legacy.html"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
