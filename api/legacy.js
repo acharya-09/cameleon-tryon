@@ -307,36 +307,18 @@ export default async function handler(req, res) {
 
         console.log(`[${requestId}] RunPod payload:`, JSON.stringify(runpodPayload, null, 2));
 
-        // Create AbortController for timeout on initial RunPod request
-        const controller = new AbortController();
-        const initialTimeout = setTimeout(() => {
-            console.log(`[${requestId}] Initial RunPod request timeout after 60s`);
-            controller.abort();
-        }, 60000); // 60 second timeout for initial request
+        // Call RunPod API - it will wait and respond when generation is complete
+        const runpodResponse = await fetch(RUNPOD_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${RUNPOD_API_KEY}`
+            },
+            body: JSON.stringify(runpodPayload)
+        });
 
-        let runpodResponse;
-        try {
-            runpodResponse = await fetch(RUNPOD_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${RUNPOD_API_KEY}`
-                },
-                body: JSON.stringify(runpodPayload),
-                signal: controller.signal
-            });
-            clearTimeout(initialTimeout);
-        } catch (fetchError) {
-            clearTimeout(initialTimeout);
-            if (fetchError.name === 'AbortError') {
-                console.error(`[${requestId}] RunPod initial request timed out after 60s`);
-                throw new Error('RunPod API initial request timeout - service may be overloaded');
-            }
-            console.error(`[${requestId}] RunPod fetch error:`, fetchError);
-            throw new Error(`RunPod API connection error: ${fetchError.message}`);
-        }
-
-        console.log(`[${requestId}] RunPod response status: ${runpodResponse.status}`);
+        const elapsed6a = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.log(`[${requestId}] [${elapsed6a}s] RunPod response status: ${runpodResponse.status}`);
 
         if (!runpodResponse.ok) {
             const errorText = await runpodResponse.text().catch(() => 'Unable to read error response');
