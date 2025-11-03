@@ -252,22 +252,15 @@ export default async function handler(req, res) {
         console.log(`[${requestId}] [${elapsed3}s] Image buffers read - User: ${userImageBuffer.length} bytes, Clothing: ${clothingImageBuffer.length} bytes`);
         console.log(`[${requestId}] [${elapsed3}s] Uploading images to hosting service...`);
 
-        // Upload images to get public URLs with timeout protection
+        // Upload images to get public URLs - NO TIMEOUT, let it take as long as needed
         const uploadStartTime = Date.now();
         let userImageUrl, clothingImageUrl;
         
         try {
-            const uploadPromise = Promise.all([
+            [userImageUrl, clothingImageUrl] = await Promise.all([
                 uploadImageToHost(userImageBuffer),
                 uploadImageToHost(clothingImageBuffer)
             ]);
-            
-            // Add timeout for image uploads (90 seconds total)
-            const uploadTimeout = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Image upload timeout after 90 seconds')), 90000)
-            );
-            
-            [userImageUrl, clothingImageUrl] = await Promise.race([uploadPromise, uploadTimeout]);
             
             const uploadDuration = Date.now() - uploadStartTime;
             const elapsed4 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
