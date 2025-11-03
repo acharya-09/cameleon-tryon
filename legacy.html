@@ -1425,7 +1425,7 @@
             try {
                 // Create the API promise - NOTE: This calls the RunPod API via /api/legacy
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 320000);
+                const timeoutId = setTimeout(() => controller.abort(), 510000); // 510 seconds (8.5 minutes) - slightly more than server timeout
                 
                 const apiPromise = fetch('/api/legacy', {
                     method: 'POST',
