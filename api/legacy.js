@@ -7,6 +7,7 @@
 import { IncomingForm } from 'formidable';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 
 // CRITICAL: Store these in environment variables, NEVER in code
 const RUNPOD_API_KEY = process.env.RUNPOD_API_KEY;
@@ -23,6 +24,11 @@ const RUNPOD_BASE_URL = RUNPOD_API_URL ? RUNPOD_API_URL.replace('/runsync', '').
 const requestCounts = new Map();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 5;
+
+// Request ID generation with strong uniqueness guarantee
+let requestCounter = 0;
+const requestIdCache = new Set();
+const MAX_CACHE_SIZE = 10000;
 
 /**
  * Upload image to free hosting service
@@ -91,10 +97,50 @@ async function uploadImageToHost(imageBuffer) {
 }
 
 /**
- * Generate unique request ID
+ * Generate cryptographically strong unique request ID
+ * Combines multiple sources of uniqueness to guarantee no collisions:
+ * - High-resolution timestamp (nanoseconds)
+ * - Incrementing counter
+ * - Cryptographically secure random bytes
+ * - Deduplication cache check
  */
 function generateRequestId() {
-    return `fitchek-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Increment counter (wraps at 999999)
+    requestCounter = (requestCounter + 1) % 1000000;
+    
+    // Get high-resolution time for better precision
+    const hrTime = process.hrtime.bigint();
+    const timestamp = Date.now();
+    
+    // Generate cryptographically secure random hex string (16 bytes = 32 hex chars)
+    const randomHex = crypto.randomBytes(16).toString('hex');
+    
+    // Combine all sources of uniqueness
+    let requestId = `req-${timestamp}-${hrTime.toString().slice(-6)}-${requestCounter.toString().padStart(6, '0')}-${randomHex.slice(0, 12)}`;
+    
+    // Ensure absolute uniqueness with cache check
+    // If by some astronomical chance we generate a duplicate, regenerate
+    let attempts = 0;
+    while (requestIdCache.has(requestId) && attempts < 10) {
+        attempts++;
+        const extraRandom = crypto.randomBytes(8).toString('hex');
+        requestId = `req-${timestamp}-${hrTime.toString().slice(-6)}-${requestCounter}-${extraRandom}`;
+    }
+    
+    // Add to cache and manage cache size
+    requestIdCache.add(requestId);
+    
+    // Prevent memory leak by limiting cache size
+    if (requestIdCache.size > MAX_CACHE_SIZE) {
+        // Remove oldest entries (first 1000)
+        const iterator = requestIdCache.values();
+        for (let i = 0; i < 1000; i++) {
+            requestIdCache.delete(iterator.next().value);
+        }
+    }
+    
+    console.log(`Generated unique request ID: ${requestId}`);
+    return requestId;
 }
 
 // Main API handler
