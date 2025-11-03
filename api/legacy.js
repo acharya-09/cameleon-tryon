@@ -202,9 +202,11 @@ export default async function handler(req, res) {
         requestCounts.set(clientId, { firstRequest: now, count: 1 });
     }
     
+    const requestStartTime = Date.now();
+    
     try {
         // Parse form data using formidable
-        console.log(`[${requestId}] Starting form parsing...`);
+        console.log(`[${requestId}] [0s] Starting form parsing...`);
         const form = new IncomingForm();
         
         // Set formidable options for better compatibility
@@ -219,7 +221,8 @@ export default async function handler(req, res) {
             });
         });
 
-        console.log(`[${requestId}] Form parsed successfully`);
+        const elapsed1 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.log(`[${requestId}] [${elapsed1}s] Form parsed successfully`);
         console.log(`[${requestId}] Files received:`, Object.keys(files));
         console.log(`[${requestId}] Fields received:`, Object.keys(fields));
 
@@ -238,24 +241,45 @@ export default async function handler(req, res) {
             });
         }
 
-        console.log(`[${requestId}] Reading image files...`);
+        const elapsed2 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.log(`[${requestId}] [${elapsed2}s] Reading image files...`);
 
         // Read the file buffers
         const userImageBuffer = fs.readFileSync(userImageFile.filepath);
         const clothingImageBuffer = fs.readFileSync(clothingImageFile.filepath);
 
-        console.log(`[${requestId}] Image buffers read - User: ${userImageBuffer.length} bytes, Clothing: ${clothingImageBuffer.length} bytes`);
-        console.log(`[${requestId}] Uploading images to hosting service...`);
+        const elapsed3 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.log(`[${requestId}] [${elapsed3}s] Image buffers read - User: ${userImageBuffer.length} bytes, Clothing: ${clothingImageBuffer.length} bytes`);
+        console.log(`[${requestId}] [${elapsed3}s] Uploading images to hosting service...`);
 
-        // Upload images to get public URLs
-        const [userImageUrl, clothingImageUrl] = await Promise.all([
-            uploadImageToHost(userImageBuffer),
-            uploadImageToHost(clothingImageBuffer)
-        ]);
-
-        console.log(`[${requestId}] Images uploaded successfully`);
-        console.log(`[${requestId}] User image URL: ${userImageUrl}`);
-        console.log(`[${requestId}] Clothing image URL: ${clothingImageUrl}`);
+        // Upload images to get public URLs with timeout protection
+        const uploadStartTime = Date.now();
+        let userImageUrl, clothingImageUrl;
+        
+        try {
+            const uploadPromise = Promise.all([
+                uploadImageToHost(userImageBuffer),
+                uploadImageToHost(clothingImageBuffer)
+            ]);
+            
+            // Add timeout for image uploads (90 seconds total)
+            const uploadTimeout = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Image upload timeout after 90 seconds')), 90000)
+            );
+            
+            [userImageUrl, clothingImageUrl] = await Promise.race([uploadPromise, uploadTimeout]);
+            
+            const uploadDuration = Date.now() - uploadStartTime;
+            const elapsed4 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+            console.log(`[${requestId}] [${elapsed4}s] Images uploaded successfully in ${uploadDuration}ms`);
+            console.log(`[${requestId}] User image URL: ${userImageUrl}`);
+            console.log(`[${requestId}] Clothing image URL: ${clothingImageUrl}`);
+            
+        } catch (uploadError) {
+            const uploadDuration = Date.now() - uploadStartTime;
+            console.error(`[${requestId}] Image upload failed after ${uploadDuration}ms:`, uploadError.message);
+            throw new Error(`Image upload failed: ${uploadError.message}. Please try again or use smaller images.`);
+        }
 
         // Clean up temporary files
         try {
@@ -265,7 +289,8 @@ export default async function handler(req, res) {
             console.log(`[${requestId}] Cleanup warning:`, cleanupError.message);
         }
 
-        console.log(`[${requestId}] Calling RunPod API...`);
+        const elapsed5 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.log(`[${requestId}] [${elapsed5}s] Calling RunPod API...`);
 
         // Call RunPod API to start generation
         const runpodPayload = {
@@ -282,21 +307,46 @@ export default async function handler(req, res) {
 
         console.log(`[${requestId}] RunPod payload:`, JSON.stringify(runpodPayload, null, 2));
 
-        const runpodResponse = await fetch(RUNPOD_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${RUNPOD_API_KEY}`
-            },
-            body: JSON.stringify(runpodPayload)
-        });
+        // Create AbortController for timeout on initial RunPod request
+        const controller = new AbortController();
+        const initialTimeout = setTimeout(() => {
+            console.log(`[${requestId}] Initial RunPod request timeout after 60s`);
+            controller.abort();
+        }, 60000); // 60 second timeout for initial request
+
+        let runpodResponse;
+        try {
+            runpodResponse = await fetch(RUNPOD_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${RUNPOD_API_KEY}`
+                },
+                body: JSON.stringify(runpodPayload),
+                signal: controller.signal
+            });
+            clearTimeout(initialTimeout);
+        } catch (fetchError) {
+            clearTimeout(initialTimeout);
+            if (fetchError.name === 'AbortError') {
+                console.error(`[${requestId}] RunPod initial request timed out after 60s`);
+                throw new Error('RunPod API initial request timeout - service may be overloaded');
+            }
+            console.error(`[${requestId}] RunPod fetch error:`, fetchError);
+            throw new Error(`RunPod API connection error: ${fetchError.message}`);
+        }
+
+        console.log(`[${requestId}] RunPod response status: ${runpodResponse.status}`);
 
         if (!runpodResponse.ok) {
-            throw new Error(`RunPod API error: ${runpodResponse.status} ${runpodResponse.statusText}`);
+            const errorText = await runpodResponse.text().catch(() => 'Unable to read error response');
+            console.error(`[${requestId}] RunPod API error response:`, errorText);
+            throw new Error(`RunPod API error: ${runpodResponse.status} ${runpodResponse.statusText} - ${errorText}`);
         }
 
         const runpodData = await runpodResponse.json();
-        console.log(`[${requestId}] RunPod response:`, JSON.stringify(runpodData, null, 2));
+        const elapsed6 = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.log(`[${requestId}] [${elapsed6}s] RunPod response:`, JSON.stringify(runpodData, null, 2));
 
         // Check if completed immediately (rare)
         if (runpodData.status === 'COMPLETED' && 
@@ -446,7 +496,8 @@ export default async function handler(req, res) {
         throw new Error(`Unexpected response status: ${runpodData.status}`);
 
     } catch (error) {
-        console.error(`[${requestId}] ❌ Error:`, error.message);
+        const elapsedError = ((Date.now() - requestStartTime) / 1000).toFixed(1);
+        console.error(`[${requestId}] [${elapsedError}s] ❌ Error:`, error.message);
         console.error(`[${requestId}] Stack trace:`, error.stack);
         
         // More specific error handling
