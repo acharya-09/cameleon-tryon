@@ -323,7 +323,7 @@ export default async function handler(req, res) {
             console.log(`[${requestId}] Job ${jobId} is IN_PROGRESS, starting polling...`);
 
             // Poll for completion
-            const maxWaitTime = 300000; // 5 minutes total
+            const maxWaitTime = 500000; // 500 seconds total (~8.3 minutes)
             const startTime = Date.now();
             let pollInterval = 10000; // Start with 10 seconds
 
